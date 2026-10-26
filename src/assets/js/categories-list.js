@@ -21,24 +21,19 @@
 
         function td(row, value, className = '') {
             const cell = row.insertCell();
-
             cell.textContent = value == null ? '' : value;
             cell.className = className;
-
             return cell;
         }
 
         function action(cell, text, actionName, id, color) {
             const button = d.createElement('button');
-
             button.type = 'button';
             button.className = 'btn btn-sm btn-outline-' + color + ' me-1';
             button.textContent = text;
             button.dataset.action = actionName;
             button.dataset.id = String(id);
-
             cell.appendChild(button);
-
             return button;
         }
 
@@ -49,18 +44,19 @@
             retry = null,
             hidePagination = true
         ) {
+            if (kind === 'deleted' && w.TarazinoCategoriesVue) {
+                w.TarazinoCategoriesVue.setDeletedStatus(text, isError);
+                return;
+            }
+
             const [bodyId, paginationId] = ids(kind);
             const body = $(bodyId);
-
             body.replaceChildren();
 
             const cell = body.insertRow().insertCell();
-
             cell.colSpan = kind === 'active' ? 4 : 5;
-            cell.className =
-                'text-center py-5 ' +
+            cell.className = 'text-center py-5 ' +
                 (isError ? 'text-danger' : 'text-body-secondary');
-
             cell.textContent = text;
 
             if (hidePagination) {
@@ -69,19 +65,14 @@
 
             if (retry) {
                 const button = d.createElement('button');
-
                 button.type = 'button';
                 button.className = 'btn btn-sm btn-outline-primary ms-2';
                 button.textContent = 'تلاش دوباره';
                 button.addEventListener('click', retry);
-
                 cell.appendChild(button);
             }
         }
 
-        /**
-         * صفحه‌بندی مبتنی بر اطلاعات برگشتی از API.
-         */
         function renderPagination(kind) {
             const [, prefix] = ids(kind);
             const pagination = s.pagination[kind];
@@ -91,10 +82,13 @@
                 return;
             }
 
-            const currentPage = pagination.current_page;
-            const totalPages = pagination.total_pages;
-            const total = pagination.total;
-            const perPage = pagination.per_page;
+            const currentPage = Number(pagination.current_page) || 1;
+            const totalPages = Number(pagination.total_pages) || 0;
+            const total = Number(pagination.total) || 0;
+            const perPage = Number(pagination.per_page) || 10;
+            const vueLoading = kind === 'active' &&
+                w.TarazinoCategoriesVue &&
+                w.TarazinoCategoriesVue.loading;
 
             $(prefix).classList.toggle('d-none', totalPages <= 1);
 
@@ -119,16 +113,16 @@
             function pageButton(text, page, disabled, selected = false) {
                 const li = d.createElement('li');
                 const button = d.createElement('button');
+                const isDisabled = disabled || Boolean(vueLoading);
 
-                li.className =
-                    'page-item' +
-                    (disabled ? ' disabled' : '') +
+                li.className = 'page-item' +
+                    (isDisabled ? ' disabled' : '') +
                     (selected ? ' active' : '');
 
                 button.type = 'button';
                 button.className = 'page-link';
                 button.textContent = text;
-                button.disabled = disabled;
+                button.disabled = isDisabled;
 
                 if (selected) {
                     button.setAttribute('aria-current', 'page');
@@ -142,11 +136,7 @@
                 pageList.appendChild(li);
             }
 
-            pageButton(
-                'قبلی',
-                currentPage - 1,
-                currentPage === 1
-            );
+            pageButton('قبلی', currentPage - 1, currentPage === 1);
 
             const first = Math.max(
                 1,
@@ -166,17 +156,9 @@
                 );
             }
 
-            pageButton(
-                'بعدی',
-                currentPage + 1,
-                currentPage === totalPages
-            );
+            pageButton('بعدی', currentPage + 1, currentPage === totalPages);
         }
 
-        /**
-         * تنظیمات ظاهری آیکون دسته‌بندی‌ها.
-         * این اطلاعات در دیتابیس ذخیره نمی‌شوند.
-         */
         function visual(category) {
             const name = String(category.name || '');
 
@@ -203,135 +185,86 @@
                     : ['fa-arrow-trend-down', 'text-danger'];
         }
 
-        /**
-         * نمایش دقیق نتایجی که سرور برگردانده است.
-         *
-         * فیلتر یا مرتب‌سازی محلی اینجا انجام نمی‌شود؛
-         * چون داده‌ها از قبل در بک‌اند فیلتر و مرتب شده‌اند.
-         */
         function render(kind) {
-            const items = kind === 'active'
-                ? s.active
-                : s.deleted;
+            if (kind === 'active') {
+                return;
+            }
+
+            if (kind === 'deleted') {
+                const vue = w.TarazinoCategoriesVue;
+                if (vue) {
+                    vue.setDeletedCategories(
+                        s.deleted,
+                        s.pagination.deleted
+                    );
+                }
+                return;
+            }
+
+            const items = s.deleted;
 
             if (!items.length) {
                 empty(
-                    kind,
-                    kind === 'active'
-                        ? 'دسته‌بندی فعالی مطابق فیلترها وجود ندارد.'
-                        : 'دسته‌بندی حذف‌شده‌ای وجود ندارد.',
+                    'deleted',
+                    'دسته‌بندی حذف‌شده‌ای وجود ندارد.',
                     false,
                     null,
                     false
                 );
-
-                renderPagination(kind);
+                renderPagination('deleted');
                 return;
             }
 
-            const body = $(ids(kind)[0]);
-
+            const body = $(ids('deleted')[0]);
             body.replaceChildren();
 
             items.forEach(category => {
                 const row = body.insertRow();
                 const name = row.insertCell();
                 const icon = d.createElement('i');
-
                 const [symbol, color] = visual(category);
 
-                icon.className =
-                    'fa-solid ' + symbol + ' ' + color + ' me-2';
-
+                icon.className = 'fa-solid ' + symbol + ' ' + color + ' me-2';
                 icon.setAttribute('aria-hidden', 'true');
+                name.append(icon, d.createTextNode(category.name || '—'));
 
-                name.append(
-                    icon,
-                    d.createTextNode(category.name || '—')
-                );
+                td(row, category.type === 'income' ? 'درآمد' : 'هزینه');
+                td(row, fmt().dateTime(category.deleted_at), 'text-nowrap');
+
+                const allowed = category.restore_available === true;
 
                 td(
                     row,
-                    category.type === 'income' ? 'درآمد' : 'هزینه'
+                    allowed ? 'در مهلت بازیابی' : 'مهلت بازیابی تمام شده',
+                    allowed ? 'text-success' : 'text-warning'
                 );
 
-                if (kind === 'active') {
-                    td(
-                        row,
-                        fmt().date(category.created_at),
-                        'text-nowrap'
-                    );
-
-                    const controls = row.insertCell();
-
-                    action(
-                        controls,
-                        'ویرایش',
-                        'edit',
-                        category.id,
-                        'primary'
-                    );
-
-                    action(
-                        controls,
-                        'حذف',
-                        'delete',
-                        category.id,
-                        'danger'
-                    );
-                } else {
-                    td(
-                        row,
-                        fmt().dateTime(category.deleted_at),
-                        'text-nowrap'
-                    );
-
-                    const allowed = category.restore_available === true;
-
-                    td(
-                        row,
-                        allowed
-                            ? 'در مهلت بازیابی'
-                            : 'مهلت بازیابی تمام شده',
-                        allowed ? 'text-success' : 'text-warning'
-                    );
-
-                    action(
-                        row.insertCell(),
-                        'بازیابی',
-                        'restore',
-                        category.id,
-                        'success'
-                    ).disabled = !allowed || s.busy;
-                }
+                action(
+                    row.insertCell(),
+                    'بازیابی',
+                    'restore',
+                    category.id,
+                    'success'
+                ).disabled = !allowed || s.busy;
             });
 
-            renderPagination(kind);
+            renderPagination('deleted');
         }
 
         function bind() {
-            // عملیات جدول دسته‌بندی‌های فعال
             $('categoriesTableBody').addEventListener('click', event => {
                 const button = event.target.closest('button[data-action]');
-
                 if (!button) return;
 
                 const category = s.active.find(
                     item => String(item.id) === button.dataset.id
                 );
-
                 if (!category) return;
 
-                if (button.dataset.action === 'edit') {
-                    edit(category);
-                }
-
-                if (button.dataset.action === 'delete') {
-                    askDelete(category);
-                }
+                if (button.dataset.action === 'edit') edit(category);
+                if (button.dataset.action === 'delete') askDelete(category);
             });
 
-            // عملیات جدول دسته‌بندی‌های حذف‌شده
             $('deletedCategoriesTableBody').addEventListener(
                 'click',
                 event => {
@@ -345,39 +278,24 @@
                 }
             );
 
-            // کنترل‌های فیلتر و مرتب‌سازی
             const searchInput = $('categoriesSearch');
             const typeInput = $('categoriesTypeFilter');
             const sortInput = $('categoriesSortFilter');
 
-            if (searchInput) {
-                searchInput.disabled = false;
-            }
+            if (searchInput) searchInput.disabled = false;
+            if (typeInput) typeInput.disabled = false;
+            if (sortInput) sortInput.disabled = false;
 
-            if (typeInput) {
-                typeInput.disabled = false;
-            }
-
-            if (sortInput) {
-                sortInput.disabled = false;
-            }
-
-            // تغییر ورودی‌ها صرفاً مقادیر فرم را تغییر می‌دهد.
-            // درخواست جدید تنها با دکمه اعمال فیلترها ارسال می‌شود.
             const applyButton = $('applyCategoriesFiltersButton');
 
             if (applyButton) {
-                applyButton.addEventListener('click', () => {
-                    applyFilters();
-                });
+                applyButton.addEventListener('click', applyFilters);
             }
 
             const clearButton = $('clearCategoriesFiltersButton');
 
             if (clearButton) {
-                clearButton.addEventListener('click', () => {
-                    clearFilters();
-                });
+                clearButton.addEventListener('click', clearFilters);
             }
 
             const note = $('categoriesFiltersNote');
@@ -388,11 +306,7 @@
             }
         }
 
-        return {
-            bind,
-            render,
-            empty
-        };
+        return { bind, render, empty };
     }
 
     w.TarazinoCategoryList = Object.freeze({ create });

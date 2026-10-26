@@ -5,12 +5,14 @@
  * Bootstrap 5.3 RTL handles layout and components.
  * Font Awesome supplies icons; no category icons/colors are persisted.
  *
- * JavaScript owns data fetching, filters, sorting, pagination and actions.
- * The API performs filtering and sorting on the server.
+ * Vue manages active categories and the filter input state.
+ * The legacy scripts still manage category forms, deletion, restoration,
+ * the deleted list, and pagination controls. The API filters on the server.
  *
  * Compatibility contract:
  * - data-categories-api-url
  * - addCategoryButton, categoriesMessage
+ * - categoriesMain is the Vue mount point
  * - categoriesSearch, categoriesTypeFilter, categoriesSortFilter
  * - applyCategoriesFiltersButton, clearCategoriesFiltersButton
  * - showActiveCategoriesButton, showDeletedCategoriesButton
@@ -100,7 +102,6 @@ $view_username = isset($username) && is_string($username)
                                    aria-hidden="true"></i>
                                 جست‌وجو و فیلتر
                             </h3>
-
                         </div>
 
                         <div class="row g-3 align-items-end">
@@ -120,6 +121,7 @@ $view_username = isset($username) && is_string($username)
 
                                     <input type="search"
                                            id="categoriesSearch"
+                                           v-model.trim="filters.search"
                                            class="form-control"
                                            placeholder="نام دسته‌بندی را وارد کنید"
                                            autocomplete="off"
@@ -135,6 +137,7 @@ $view_username = isset($username) && is_string($username)
                                 </label>
 
                                 <select id="categoriesTypeFilter"
+                                        v-model="filters.type"
                                         class="form-select"
                                         aria-describedby="categoriesFiltersNote">
                                     <option value="all">همه انواع</option>
@@ -151,6 +154,7 @@ $view_username = isset($username) && is_string($username)
                                 </label>
 
                                 <select id="categoriesSortFilter"
+                                        v-model="filters.sort"
                                         class="form-select"
                                         aria-describedby="categoriesFiltersNote">
                                     <option value="newest" selected>
@@ -261,7 +265,8 @@ $view_username = isset($username) && is_string($username)
 
                                 <tbody id="categoriesTableBody"
                                        aria-live="polite">
-                                    <tr>
+
+                                    <tr v-if="loading">
                                         <td colspan="4"
                                             class="text-center text-body-secondary py-5">
                                             <span class="spinner-border spinner-border-sm me-2"
@@ -270,25 +275,132 @@ $view_username = isset($username) && is_string($username)
                                             در حال دریافت دسته‌بندی‌ها...
                                         </td>
                                     </tr>
+
+                                    <tr v-else-if="error">
+                                        <td colspan="4"
+                                            class="text-center text-danger py-5"
+                                            role="alert">
+                                            {{ error }}
+
+                                            <button type="button"
+                                                    class="btn btn-sm btn-outline-danger ms-2"
+                                                    @click="retryLoad">
+                                                تلاش دوباره
+                                            </button>
+                                        </td>
+                                    </tr>
+
+                                    <tr v-else-if="!hasCategories">
+                                        <td colspan="4"
+                                            class="text-center text-body-secondary py-5">
+                                            دسته‌بندی فعالی مطابق فیلترها وجود ندارد.
+                                        </td>
+                                    </tr>
+
+                                    <tr v-for="category in categories"
+                                        :key="category.id">
+
+                                        <td class="ps-3">
+                                            <i class="fa-solid me-2"
+                                               :class="categoryIcon(category)"
+                                               aria-hidden="true"></i>
+
+                                            {{ category.name || '—' }}
+                                        </td>
+
+                                        <td>
+                                            {{ category.type === 'income' ? 'درآمد' : 'هزینه' }}
+                                        </td>
+
+                                        <td class="text-nowrap">
+                                            {{ formatDate(category.created_at) }}
+                                        </td>
+
+                                        <td class="text-nowrap pe-3">
+                                            <button type="button"
+                                                    class="btn btn-sm btn-outline-primary me-1"
+                                                    data-action="edit"
+                                                    :data-id="category.id">
+                                                ویرایش
+                                            </button>
+
+                                            <button type="button"
+                                                    class="btn btn-sm btn-outline-danger me-1"
+                                                    data-action="delete"
+                                                    :data-id="category.id">
+                                                حذف
+                                            </button>
+                                        </td>
+
+                                    </tr>
+
                                 </tbody>
                             </table>
                         </div>
 
                         <!-- Server-side pagination -->
+                        <!-- Vue server-side pagination -->
                         <div id="categoriesPagination"
-                             class="card-footer bg-body d-none"
-                             data-component="pagination">
+                            class="card-footer bg-body"
+                            data-component="pagination"
+                            v-if="pagination.total_pages > 1">
 
                             <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+
                                 <span id="categoriesPaginationSummary"
-                                      class="small text-body-secondary"
-                                      aria-live="polite"></span>
+                                    class="small text-body-secondary"
+                                    aria-live="polite">
+                                    {{ paginationSummary }}
+                                </span>
 
                                 <nav class="tz-pagination"
-                                     aria-label="صفحه‌بندی دسته‌بندی‌های فعال">
+                                    aria-label="صفحه‌بندی دسته‌بندی‌های فعال">
+
                                     <ul id="categoriesPaginationList"
-                                        class="pagination pagination-sm mb-0"></ul>
+                                        class="pagination pagination-sm mb-0">
+
+                                        <!-- Previous page -->
+                                        <li class="page-item"
+                                            :class="{ disabled: !canGoPrevious }">
+
+                                            <button type="button"
+                                                    class="page-link"
+                                                    :disabled="!canGoPrevious"
+                                                    @click="changePage(pagination.current_page - 1)">
+                                                قبلی
+                                            </button>
+                                        </li>
+
+                                        <!-- Page numbers -->
+                                        <li v-for="page in paginationPages"
+                                            :key="page"
+                                            class="page-item"
+                                            :class="{ active: page === pagination.current_page }">
+
+                                            <button type="button"
+                                                    class="page-link"
+                                                    :disabled="loading"
+                                                    :aria-current="page === pagination.current_page ? 'page' : null"
+                                                    @click="changePage(page)">
+                                                {{ formatInteger(page) }}
+                                            </button>
+                                        </li>
+
+                                        <!-- Next page -->
+                                        <li class="page-item"
+                                            :class="{ disabled: !canGoNext }">
+
+                                            <button type="button"
+                                                    class="page-link"
+                                                    :disabled="!canGoNext"
+                                                    @click="changePage(pagination.current_page + 1)">
+                                                بعدی
+                                            </button>
+                                        </li>
+
+                                    </ul>
                                 </nav>
+
                             </div>
                         </div>
 
@@ -335,10 +447,72 @@ $view_username = isset($username) && is_string($username)
 
                                 <tbody id="deletedCategoriesTableBody"
                                        aria-live="polite">
-                                    <tr>
+                                    <tr v-if="deletedLoading">
                                         <td colspan="5"
                                             class="text-center text-body-secondary py-5">
-                                            برای مشاهده دسته‌بندی‌های حذف‌شده، این بخش را انتخاب کنید.
+                                            <span class="spinner-border spinner-border-sm me-2"
+                                                  role="status"
+                                                  aria-hidden="true"></span>
+                                            در حال دریافت دسته‌بندی‌های حذف‌شده...
+                                        </td>
+                                    </tr>
+
+                                    <tr v-else-if="deletedError">
+                                        <td colspan="5"
+                                            class="text-center text-danger py-5"
+                                            role="alert">
+                                            {{ deletedError }}
+
+                                            <button type="button"
+                                                    class="btn btn-sm btn-outline-danger ms-2"
+                                                    @click="retryDeleted">
+                                                تلاش دوباره
+                                            </button>
+                                        </td>
+                                    </tr>
+
+                                    <tr v-else-if="!hasDeletedCategories">
+                                        <td colspan="5"
+                                            class="text-center text-body-secondary py-5">
+                                            {{ deletedEmptyMessage }}
+                                        </td>
+                                    </tr>
+
+                                    <tr v-for="category in deletedCategories"
+                                        :key="category.id">
+                                        <td class="ps-3">
+                                            <i class="fa-solid me-2"
+                                               :class="categoryIcon(category)"
+                                               aria-hidden="true"></i>
+
+                                            {{ category.name || '—' }}
+                                        </td>
+
+                                        <td>
+                                            {{ category.type === 'income' ? 'درآمد' : 'هزینه' }}
+                                        </td>
+
+                                        <td class="text-nowrap">
+                                            {{ formatDateTime(category.deleted_at) }}
+                                        </td>
+
+                                        <td :class="category.restore_available
+                                            ? 'text-success'
+                                            : 'text-warning'">
+                                            {{ category.restore_available
+                                                ? 'در مهلت بازیابی'
+                                                : 'مهلت بازیابی تمام شده' }}
+                                        </td>
+
+                                        <td class="text-nowrap pe-3">
+                                            <button type="button"
+                                                    class="btn btn-sm btn-outline-success me-1"
+                                                    data-action="restore"
+                                                    :data-id="category.id"
+                                                    :disabled="!category.restore_available
+                                                        || deletedLoading">
+                                                بازیابی
+                                            </button>
                                         </td>
                                     </tr>
                                 </tbody>
@@ -346,18 +520,62 @@ $view_username = isset($username) && is_string($username)
                         </div>
 
                         <div id="deletedCategoriesPagination"
-                             class="card-footer bg-body d-none"
-                             data-component="pagination">
+                             class="card-footer bg-body"
+                             data-component="pagination"
+                             v-if="deletedPagination.total_pages > 1">
 
                             <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
                                 <span id="deletedCategoriesPaginationSummary"
                                       class="small text-body-secondary"
-                                      aria-live="polite"></span>
+                                      aria-live="polite">
+                                    {{ deletedPaginationSummary }}
+                                </span>
 
                                 <nav class="tz-pagination"
                                      aria-label="صفحه‌بندی دسته‌بندی‌های حذف‌شده">
                                     <ul id="deletedCategoriesPaginationList"
-                                        class="pagination pagination-sm mb-0"></ul>
+                                        class="pagination pagination-sm mb-0">
+                                        <li class="page-item"
+                                            :class="{ disabled: !canGoPreviousDeleted }">
+                                            <button type="button"
+                                                    class="page-link"
+                                                    :disabled="!canGoPreviousDeleted"
+                                                    @click="changeDeletedPage(
+                                                        deletedPagination.current_page - 1
+                                                    )">
+                                                قبلی
+                                            </button>
+                                        </li>
+
+                                        <li v-for="page in deletedPaginationPages"
+                                            :key="page"
+                                            class="page-item"
+                                            :class="{
+                                                active: page === deletedPagination.current_page
+                                            }">
+                                            <button type="button"
+                                                    class="page-link"
+                                                    :disabled="deletedLoading"
+                                                    :aria-current="page === deletedPagination.current_page
+                                                        ? 'page'
+                                                        : null"
+                                                    @click="changeDeletedPage(page)">
+                                                {{ formatInteger(page) }}
+                                            </button>
+                                        </li>
+
+                                        <li class="page-item"
+                                            :class="{ disabled: !canGoNextDeleted }">
+                                            <button type="button"
+                                                    class="page-link"
+                                                    :disabled="!canGoNextDeleted"
+                                                    @click="changeDeletedPage(
+                                                        deletedPagination.current_page + 1
+                                                    )">
+                                                بعدی
+                                            </button>
+                                        </li>
+                                    </ul>
                                 </nav>
                             </div>
                         </div>
@@ -550,6 +768,12 @@ $view_username = isset($username) && is_string($username)
 $this->load->view('layouts/footer', array(
     'page_scripts' => array(
         base_url('assets/js/api.js'),
+
+        // Vue must load before the Vue page module.
+        'https://unpkg.com/vue@3/dist/vue.global.js',
+        base_url('assets/js/vue/categories.js'),
+
+        // Existing category form, deleted-list, and action handlers.
         base_url('assets/js/categories-form.js'),
         base_url('assets/js/categories-list.js'),
         base_url('assets/js/categories.js')

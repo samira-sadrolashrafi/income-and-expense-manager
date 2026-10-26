@@ -1,4 +1,4 @@
-/** TARAZINO | Categories coordinator: API, filters, pagination, delete/restore. */
+/** TARAZINO | Categories coordinator: forms, deleted list, and Vue integration. */
 (function (w, d) {
     'use strict';
 
@@ -18,17 +18,16 @@
         active: [],
         deleted: [],
         page: { active: 1, deleted: 1 },
-        activeRequest: 0,
         pagination: { active: null, deleted: null },
         perPage: PAGE_SIZE,
-        appliedFilters: { ...DEFAULT_FILTERS },
         busy: false,
         deletingId: null,
         deletedLoaded: false,
         loadingDeleted: false
     };
 
-    let form, list;
+    let form;
+    let list;
 
     function notice(id, text, type = 'danger') {
         const element = $(id);
@@ -45,148 +44,94 @@
     }
 
     /**
-     * ساخت URL دسته‌بندی‌های فعال با فیلترهای اعمال‌شده.
-     * مقادیر این بخش تا زمان کلیک روی «اعمال فیلترها»
-     * از ورودی‌های صفحه خوانده نمی‌شوند.
+     * Vue owns the active category request and table data.
+     * The old coordinator keeps a copy for edit/delete event handlers.
      */
-    function pageUrl(page) {
-        const params = new URLSearchParams();
-
-        params.set('page', String(page));
-        params.set('per_page', String(s.perPage));
-        params.set('search', s.appliedFilters.search);
-        params.set('type', s.appliedFilters.type);
-        params.set('sort', s.appliedFilters.sort);
-
-        return s.apiUrl + '?' + params.toString();
-    }
-
-    /**
-     * خواندن فیلترهای فرم و اعمال آن‌ها روی فهرست فعال.
-     */
-    async function applyFilters() {
-        if (s.busy) return;
-
-        const searchInput = $('categoriesSearch');
-        const typeInput = $('categoriesTypeFilter');
-        const sortInput = $('categoriesSortFilter');
-
-        const searchValue = searchInput
-            ? searchInput.value.trim()
-            : '';
-
-        const typeValue = typeInput
-            ? typeInput.value
-            : 'all';
-
-        const sortValue = sortInput
-            ? sortInput.value
-            : 'newest';
-
-        s.appliedFilters = {
-            search: searchValue,
-            type: ['income', 'expense'].includes(typeValue)
-                ? typeValue
-                : 'all',
-            sort: ['newest', 'oldest'].includes(sortValue)
-                ? sortValue
-                : 'newest'
-        };
-
-        // هر بار اعمال فیلتر، از صفحه اول شروع می‌کنیم.
-        s.page.active = 1;
-
-        notice('categoriesMessage', '');
-
-        await loadActive();
-    }
-
-    /**
-     * پاک کردن ورودی‌ها و بازگرداندن فیلترها به حالت پیش‌فرض.
-     */
-    async function clearFilters() {
-        if (s.busy) return;
-
-        const searchInput = $('categoriesSearch');
-        const typeInput = $('categoriesTypeFilter');
-        const sortInput = $('categoriesSortFilter');
-
-        if (searchInput) {
-            searchInput.value = '';
-        }
-
-        if (typeInput) {
-            typeInput.value = 'all';
-        }
-
-        if (sortInput) {
-            sortInput.value = 'newest';
-        }
-
-        s.appliedFilters = { ...DEFAULT_FILTERS };
-        s.page.active = 1;
-
-        notice('categoriesMessage', '');
-
-        await loadActive();
-    }
-
-    async function reloadActive(page = s.page.active) {
-        const requestId = ++s.activeRequest;
-        let result;
-
-        try {
-            result = await api().get(pageUrl(page));
-        } catch (error) {
-            if (requestId !== s.activeRequest) return;
-            throw error;
-        }
-
-        // از جایگزین شدن نتیجه درخواست‌های قدیمی جلوگیری می‌کنیم.
-        if (requestId !== s.activeRequest) return;
-
+    function syncActive(result) {
         if (
+            !result ||
             !Array.isArray(result.categories) ||
-            !result.pagination ||
-            typeof result.pagination.total_pages !== 'number'
+            !result.pagination
         ) {
-            throw new Error('فهرست دسته‌بندی‌ها معتبر نیست.');
-        }
-
-        const pagination = result.pagination;
-
-        // اگر صفحه درخواست‌شده دیگر وجود نداشته باشد،
-        // به آخرین صفحه معتبر برمی‌گردیم.
-        if (
-            pagination.total_pages > 0 &&
-            page > pagination.total_pages
-        ) {
-            return reloadActive(pagination.total_pages);
+            return;
         }
 
         s.active = result.categories;
-        s.pagination.active = pagination;
-
-        s.page.active = pagination.total_pages > 0
-            ? pagination.current_page
+        s.pagination.active = result.pagination;
+        s.page.active = result.pagination.total_pages > 0
+            ? result.pagination.current_page
             : 1;
 
-        list.render('active');
+        if (list) {
+            list.render('active');
+        }
     }
 
-    async function loadActive() {
-        list.empty('active', 'در حال دریافت دسته‌بندی‌ها...');
+    // This callback is available even if Vue's first request finishes early.
+    w.TarazinoCategoriesLegacy = Object.freeze({
+        syncActive,
+        changeDeletedPage(page) {
+            return changePage('deleted', page);
+        },
+        retryDeleted() {
+            return loadDeleted();
+        }
+    });
 
+    /** Apply the filters currently stored in Vue. */
+    async function applyFilters() {
+        if (s.busy) return;
+
+        const categoriesVue = w.TarazinoCategoriesVue;
+        if (!categoriesVue) return;
+
+        const filters = categoriesVue.filters;
+
+        categoriesVue.appliedFilters = {
+            search: String(filters.search || '').trim(),
+            type: ['income', 'expense'].includes(filters.type)
+                ? filters.type
+                : 'all',
+            sort: ['newest', 'oldest'].includes(filters.sort)
+                ? filters.sort
+                : 'newest'
+        };
+
+        s.page.active = 1;
+        notice('categoriesMessage', '');
+
+        await loadActive(1);
+    }
+
+    /** Reset Vue's filter fields and reload the first page. */
+    async function clearFilters() {
+        if (s.busy) return;
+
+        const categoriesVue = w.TarazinoCategoriesVue;
+        if (!categoriesVue) return;
+
+        categoriesVue.resetFilters();
+        categoriesVue.appliedFilters = { ...DEFAULT_FILTERS };
+        s.page.active = 1;
+        notice('categoriesMessage', '');
+
+        await loadActive(1);
+    }
+
+    async function reloadActive(page = s.page.active) {
+        const categoriesVue = w.TarazinoCategoriesVue;
+
+        if (!categoriesVue) {
+            throw new Error('برنامه Vue دسته‌بندی‌ها بارگذاری نشده است.');
+        }
+
+        return categoriesVue.loadCategories(page);
+    }
+
+    async function loadActive(page = s.page.active) {
         try {
-            await reloadActive();
+            await reloadActive(page);
         } catch (error) {
-            list.empty(
-                'active',
-                error.message || 'دریافت دسته‌بندی‌ها انجام نشد.',
-                true,
-                loadActive
-            );
-
             notice(
                 'categoriesMessage',
                 error.message || 'دریافت دسته‌بندی‌ها انجام نشد.'
@@ -221,14 +166,12 @@
                 pagination.total_pages > 0 &&
                 page > pagination.total_pages
             ) {
-                // پیش از درخواست صفحه معتبر بعدی، قفل را آزاد می‌کنیم.
                 s.loadingDeleted = false;
                 return loadDeleted(pagination.total_pages);
             }
 
             s.deleted = result.categories;
             s.pagination.deleted = pagination;
-
             s.page.deleted = pagination.total_pages > 0
                 ? pagination.current_page
                 : 1;
@@ -264,11 +207,10 @@
 
     async function changePage(kind, page) {
         if (s.busy) return;
-
         if (kind === 'deleted' && s.loadingDeleted) return;
+        if (kind === 'active' && w.TarazinoCategoriesVue.loading) return;
 
         const pagination = s.pagination[kind];
-
         if (!pagination) return;
 
         if (
@@ -284,14 +226,12 @@
 
         try {
             if (kind === 'active') {
-                // pageUrl فیلترهای اعمال‌شده را حفظ می‌کند.
                 await reloadActive(page);
             } else {
                 await loadDeleted(page);
             }
         } catch (error) {
             s.page[kind] = previousPage;
-
             notice(
                 'categoriesMessage',
                 error.message || 'دریافت صفحه انجام نشد.'
@@ -301,7 +241,6 @@
 
     function askDelete(category) {
         s.deletingId = String(category.id);
-
         $('deleteCategoryName').textContent = category.name || '';
         notice('deleteCategoryMessage', '');
 
@@ -314,7 +253,6 @@
         if (s.busy || s.deletingId === null) return;
 
         const button = $('confirmDeleteCategoryButton');
-
         s.busy = true;
         button.disabled = true;
         button.textContent = 'در حال حذف...';
@@ -337,7 +275,6 @@
             s.deletedLoaded = false;
 
             try {
-                // فیلترهای اعمال‌شده هنگام تازه‌سازی حفظ می‌شوند.
                 await reloadActive();
             } catch (error) {
                 notice(
@@ -450,7 +387,8 @@
             !fmt() ||
             !w.bootstrap ||
             !w.TarazinoCategoryForm ||
-            !w.TarazinoCategoryList
+            !w.TarazinoCategoryList ||
+            !w.TarazinoCategoriesVue
         ) {
             notice(
                 'categoriesMessage',
@@ -499,8 +437,21 @@
             () => notice('deleteCategoryMessage', '')
         );
 
+        // Vue may have completed its first API request before this file initialized.
+        if (w.TarazinoPendingCategoriesResponse) {
+            syncActive(w.TarazinoPendingCategoriesResponse);
+            delete w.TarazinoPendingCategoriesResponse;
+        } else if (
+            !w.TarazinoCategoriesVue.loading &&
+            !w.TarazinoCategoriesVue.error
+        ) {
+            syncActive({
+                categories: w.TarazinoCategoriesVue.categories,
+                pagination: w.TarazinoCategoriesVue.pagination
+            });
+        }
+
         switchPanel(false);
-        loadActive();
     }
 
     if (d.readyState === 'loading') {
