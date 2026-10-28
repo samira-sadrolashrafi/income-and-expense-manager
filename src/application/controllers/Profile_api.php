@@ -17,6 +17,23 @@ class Profile_api extends BaseApiController
         $this->account_deletion_service = new Account_deletion_service();
     }
 
+    public function get()
+    {
+        $data = $this->profile_service->get(
+            (int) $this->current_user_id()
+        );
+
+        if (!$data) {
+            return $this->respond_json(
+                false,
+                'پروفایل پیدا نشد.',
+                404
+            );
+        }
+
+        return $this->respond_json(true, '', 200, $data);
+    }
+
     public function update()
     {
         $result = $this->profile_service->update(

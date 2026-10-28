@@ -1,7 +1,6 @@
 <?php
 defined('BASEPATH') OR exit('No direct script access allowed');
 
-// Fixed identifiers: do not change existing IDs after users have enrolled.
 $config['recovery_questions'] = array(
     1 => 'نام اولین معلم شما چه بود؟',
     2 => 'نام اولین حیوان خانگی شما چه بود؟',

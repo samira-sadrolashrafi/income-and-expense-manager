@@ -129,6 +129,8 @@ $route['api/transactions/(:num)/restore']['post'] = 'transaction_api/restore/$1'
 // Profile API
 $route['profile']['get'] = 'profile/index';
 
+$route['api/profile']['get'] = 'profile_api/get';
+
 $route['api/profile']['post'] = 'profile_api/update';
 
 $route['api/profile/delete-account']['post'] = 'profile_api/delete_account';

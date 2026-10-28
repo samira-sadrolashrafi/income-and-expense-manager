@@ -1,22 +1,3 @@
-<?php
-defined('BASEPATH') OR exit('No direct script access allowed');
-
-/**
- * Tarazino | Shared sign-out confirmation (CodeIgniter 3 / Bootstrap 5.3 RTL).
- *
- * Presentation-only view, ready to become a Vue 3 LogoutConfirmModal component.
- * Existing assets/js/logout.js depends on the following contract:
- *   #logoutConfirmModal     Bootstrap modal element
- *   data-logout-url         POST destination
- *   data-login-url          Destination after successful logout
- *   #confirmLogoutButton    Submit/logout trigger
- *   #logoutMessage          Server/network error message
- *
- * Do not change these IDs or data attributes without updating logout.js.
- * The confirm button intentionally contains text only: logout.js replaces its
- * textContent while a request is in progress.
- */
-?>
 <div
     class="modal fade tz-modal"
     id="logoutConfirmModal"

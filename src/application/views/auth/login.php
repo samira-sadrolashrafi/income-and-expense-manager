@@ -1,16 +1,4 @@
 <?php
-defined('BASEPATH') OR exit('No direct script access allowed');
-
-/**
- * Tarazino | Login page (CodeIgniter 3).
- *
- * Bootstrap-first markup, Font Awesome icon fonts, no page-specific JS/CSS.
- * All IDs, input names, API URLs and recovery modals stay compatible
- * with assets/js/auth.js and assets/js/recovery.js.
- *
- * The presentation can later become a Vue LoginView component; API behavior
- * remains outside this view.
- */
 $this->load->view('layouts/header', array(
     'page_title' => 'ورود به حساب کاربری',
     'page_styles' => array(base_url('assets/css/dashboard.css'))
@@ -198,7 +186,6 @@ $this->load->view('layouts/header', array(
     </div>
 </div>
 
-<!-- Existing password recovery remains unchanged. -->
 <?php $this->load->view('auth/recovery_modal'); ?>
 
 <?php

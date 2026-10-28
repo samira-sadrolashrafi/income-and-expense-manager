@@ -119,8 +119,7 @@ class Auth_service
 
         $user = $this->CI->User_model->find_active_by_id((int) $user->id);
 
-        if (!$user || !$this->complete_login($user, $remember)
-            || $db->trans_status() === false) {
+        if (!$user || !$this->complete_login($user, $remember) || $db->trans_status() === false) {
             $db->trans_rollback();
             $this->CI->load->library('session');
             $this->CI->session->sess_destroy();
@@ -186,10 +185,11 @@ class Auth_service
 
         $this->CI->session->set_userdata(array(
             'user_id' => (int) $user->id,
+
             'username' => $user->username,
+            'avatar' => $user->avatar,
             'logged_in' => true
         ));
-
         return true;
     }
 

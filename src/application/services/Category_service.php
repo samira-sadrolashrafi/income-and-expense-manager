@@ -21,23 +21,12 @@ class Category_service
         $this->balance_service = new Balance_service();
     }
 
-    /**
-     * آخرین علت شکست عملیات به شکل array('message' => ..., 'status' => ...).
-     *
-     * کنترلر با همین اطلاعات، پیام مشخص و متناسب با علت واقعی
-     * را به کاربر برمی‌گرداند.
-     */
+    
     public function get_last_error()
     {
         return $this->last_error;
     }
 
-    /**
-     * ثبت علت شکست عملیات و برگرداندن false.
-     *
-     * برای خطاهای غیرمنتظره (۵xx) جزئیات فنی فقط در لاگ سرور ثبت
-     * می‌شود و کاربر پیام عمومی محترمانه دریافت می‌کند.
-     */
     private function fail($message, $status, $log_context = null)
     {
         if ($status >= 500 && $log_context !== null) {

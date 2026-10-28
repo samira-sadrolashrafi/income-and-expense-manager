@@ -75,15 +75,11 @@ class BaseApiController extends CI_Controller
 
         $this->output
             ->set_status_header($status_code)
-            ->set_content_type('application/json', 'utf-8')
             ->set_output(json_encode($response, JSON_UNESCAPED_UNICODE));
     }
 
-    protected function respond_service_error(
-        $service,
-        $fallback_message,
-        $fallback_status = 500
-    ) {
+    protected function respond_service_error($service, $fallback_message, $fallback_status = 500) {
+        
         $error = $service->get_last_error();
 
         return $this->respond_json(

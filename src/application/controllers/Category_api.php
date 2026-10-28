@@ -14,19 +14,12 @@ class Category_api extends BaseApiController
         $this->category_service = new Category_service();
     }
 
-    /**
-     * دریافت دسته‌بندی‌های فعال.
-     *
-     * در صورت ارسال پارامترهای صفحه‌بندی، فیلتر یا مرتب‌سازی،
-     * پاسخ به‌صورت صفحه‌بندی‌شده برگردانده می‌شود.
-     */
     public function index()
     {
         if (!$this->require_authenticated_user()) {
             return;
         }
 
-        // دریافت پارامترهای درخواست
         $page_param = $this->input->get('page');
         $per_page_param = $this->input->get('per_page');
 
@@ -34,15 +27,8 @@ class Category_api extends BaseApiController
         $type = $this->input->get('type');
         $sort = $this->input->get('sort');
 
-        // مشخص می‌کنیم آیا صفحه‌بندی یا فیلتر و مرتب‌سازی درخواست شده است.
-        $has_pagination_or_filters =
-            $page_param !== null ||
-            $per_page_param !== null ||
-            $search !== null ||
-            $type !== null ||
-            $sort !== null;
+        $has_pagination_or_filters = $page_param !== null || $per_page_param !== null || $search !== null || $type !== null || $sort !== null;
 
-        // حفظ رفتار قبلی برای درخواست بدون صفحه‌بندی و فیلتر
         if (!$has_pagination_or_filters) {
             $categories = $this->category_service->get_all(
                 $this->user_id
@@ -65,7 +51,6 @@ class Category_api extends BaseApiController
             );
         }
 
-        // اعتبارسنجی پارامترهای صفحه‌بندی
         $page = max(1, (int) $page_param);
 
         $per_page = (int) $per_page_param;
@@ -76,14 +61,12 @@ class Category_api extends BaseApiController
 
         $per_page = min($per_page, 100);
 
-        // آماده‌سازی فیلترها برای سرویس
         $filters = array(
             'search' => $search,
             'type' => $type,
             'sort' => $sort
         );
 
-        // دریافت نتایج صفحه‌بندی‌شده با فیلترهای درخواست‌شده
         $result = $this->category_service->get_all_paginated(
             $this->user_id,
             $page,
@@ -109,19 +92,14 @@ class Category_api extends BaseApiController
         );
     }
 
-    /**
-     * دریافت دسته‌بندی‌های حذف‌شده.
-     */
+
     public function deleted()
     {
         if (!$this->require_authenticated_user()) {
             return;
         }
 
-        if (
-            $this->input->get('page') === null &&
-            $this->input->get('per_page') === null
-        ) {
+        if ($this->input->get('page') === null && $this->input->get('per_page') === null) {
             $categories = $this->category_service->get_deleted(
                 $this->user_id
             );
@@ -134,9 +112,7 @@ class Category_api extends BaseApiController
             }
 
             foreach ($categories as $category) {
-                $category->restore_available =
-                    !empty($category->restore_until) &&
-                    strtotime($category->restore_until) > time();
+                $category->restore_available = !empty($category->restore_until) && strtotime($category->restore_until) > time();
             }
 
             return $this->respond_json(
@@ -188,9 +164,7 @@ class Category_api extends BaseApiController
         );
     }
 
-    /**
-     * ایجاد دسته‌بندی جدید.
-     */
+
     public function store()
     {
         if (!$this->require_authenticated_user()) {
@@ -221,9 +195,7 @@ class Category_api extends BaseApiController
         );
     }
 
-    /**
-     * ویرایش دسته‌بندی.
-     */
+
     public function update($category_id)
     {
         if (!$this->require_authenticated_user()) {
@@ -249,9 +221,7 @@ class Category_api extends BaseApiController
         );
     }
 
-    /**
-     * حذف دسته‌بندی.
-     */
+
     public function delete($category_id)
     {
         if (!$this->require_authenticated_user()) {
@@ -274,9 +244,7 @@ class Category_api extends BaseApiController
         );
     }
 
-    /**
-     * بازیابی دسته‌بندی حذف‌شده.
-     */
+
     public function restore($category_id)
     {
         if (!$this->require_authenticated_user()) {
@@ -299,9 +267,7 @@ class Category_api extends BaseApiController
         );
     }
 
-    /**
-     * دریافت و آماده‌سازی اطلاعات ورودی دسته‌بندی.
-     */
+
     private function category_input_data($allow_json = false)
     {
         $data = array(
@@ -309,11 +275,7 @@ class Category_api extends BaseApiController
             'type' => $this->input->post('type')
         );
 
-        if (
-            $allow_json &&
-            $data['name'] === null &&
-            $data['type'] === null
-        ) {
+        if ($allow_json && $data['name'] === null && $data['type'] === null) {
             $json = json_decode(
                 $this->input->raw_input_stream,
                 true

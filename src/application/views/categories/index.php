@@ -1,64 +1,24 @@
 <?php
-/**
- * Tarazino | Categories management view (CodeIgniter 3).
- *
- * Bootstrap 5.3 RTL handles layout and components.
- * Font Awesome supplies icons; no category icons/colors are persisted.
- *
- * JavaScript owns data fetching, filters, sorting, pagination and actions.
- * The API performs filtering and sorting on the server.
- *
- * Compatibility contract:
- * - data-categories-api-url
- * - addCategoryButton, categoriesMessage
- * - categoriesSearch, categoriesTypeFilter, categoriesSortFilter
- * - applyCategoriesFiltersButton, clearCategoriesFiltersButton
- * - showActiveCategoriesButton, showDeletedCategoriesButton
- * - activeCategoriesPanel, deletedCategoriesPanel
- * - categoriesTableBody, deletedCategoriesTableBody
- * - categoryModal, categoryForm and existing form IDs
- * - deleteCategoryModal and existing delete IDs
- */
-
-defined('BASEPATH') OR exit('No direct script access allowed');
-
-$this->load->view('layouts/header', array(
+$this->load->view('layouts/header', [
     'page_title' => 'مدیریت دسته‌بندی‌ها',
-    'page_styles' => array(
-        base_url(
-            'assets/css/dashboard.css?v=' .
-            filemtime(FCPATH . 'assets/css/dashboard.css')
-        )
-    )
-));
-
-$categories_api_url = site_url('api/categories');
-$view_username = isset($username) && is_string($username)
-    ? $username
-    : '';
+    'page_styles' => [base_url('assets/css/dashboard.css')]
+]);
 ?>
 
 <div class="container-fluid dashboard-shell px-0">
     <div class="row g-0">
-        <?php
-        $this->load->view('layouts/app_sidebar', array(
-            'active_page' => 'categories'
-        ));
-        ?>
+        <?php $this->load->view('layouts/app_sidebar', ['active_page' => 'categories']); ?>
 
         <main class="col-lg-9 col-xl-10 dashboard-main"
               id="categoriesMain"
               data-component="categories-page"
-              data-categories-api-url="<?php echo html_escape($categories_api_url); ?>">
+              data-categories-api-url="<?= html_escape(site_url('api/categories')) ?>">
 
-            <?php
-            $this->load->view('layouts/app_header', array(
+            <?php $this->load->view('layouts/app_header', [
                 'app_page_title' => 'دسته‌بندی‌ها',
-                'app_page_description' =>
-                    'دسته‌بندی‌های درآمد و هزینه خود را مدیریت کنید.',
-                'app_username' => $view_username
-            ));
-            ?>
+                'app_page_description' => 'دسته‌بندی‌های درآمد و هزینه خود را مدیریت کنید.',
+                'app_username' => $username
+            ]); ?>
 
             <div class="px-3 px-xl-4 pt-4">
 
@@ -547,12 +507,12 @@ $view_username = isset($username) && is_string($username)
 <?php $this->load->view('layouts/logout_modal'); ?>
 
 <?php
-$this->load->view('layouts/footer', array(
-    'page_scripts' => array(
+// Keep the current JavaScript until the Vue rewrite.
+$this->load->view('layouts/footer', [
+    'page_scripts' => [
         base_url('assets/js/api.js'),
         base_url('assets/js/categories-form.js'),
         base_url('assets/js/categories-list.js'),
         base_url('assets/js/categories.js')
-    )
-));
-?>
+    ]
+]);

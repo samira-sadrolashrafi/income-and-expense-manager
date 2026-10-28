@@ -1,22 +1,4 @@
 <?php
-defined('BASEPATH') OR exit('No direct script access allowed');
-
-/**
- * Tarazino | Registration page (CodeIgniter 3).
- *
- * Bootstrap-first. Uses the same branding as auth/login.php and Font Awesome
- * icon fonts; form submission and server errors remain in assets/js/auth.js.
- *
- * No user-selectable category colors/icons and no registration DB queries here.
- * This presentational view can later be migrated to a Vue 3 RegisterView.
- *
- * Stable contract with auth.js and Auth_api::register():
- *  - registerForm / registerMessage
- *  - first_name, last_name, username, email, password, password_confirm,
- *    question_id, security_answer
- *  - all eight *_err containers below
- */
-$recovery_questions = isset($questions) && is_array($questions) ? $questions : array();
 
 $this->load->view('layouts/header', array(
     'page_title' => 'ایجاد حساب کاربری',
@@ -152,7 +134,7 @@ $this->load->view('layouts/header', array(
                                             <select class="form-select" id="question_id" name="question_id"
                                                     aria-describedby="question_id_err" required>
                                                 <option value="">یک سؤال انتخاب کن</option>
-                                                <?php foreach ($recovery_questions as $question_id => $question_label): ?>
+                                                <?php foreach ($questions as $question_id => $question_label): ?>
                                                     <option value="<?php echo (int) $question_id; ?>">
                                                         <?php echo html_escape($question_label); ?>
                                                     </option>
@@ -224,7 +206,6 @@ $this->load->view('layouts/header', array(
 </main>
 
 <?php
-// Bootstrap is loaded before the page-specific script by the shared footer.
 $this->load->view('layouts/footer', array(
     'page_scripts' => array(
         base_url('assets/js/auth-request.js'),

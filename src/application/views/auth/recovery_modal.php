@@ -1,20 +1,3 @@
-<?php
- defined('BASEPATH') OR exit('No direct script access allowed');
-
-/**
- * Tarazino | Password recovery modal (CodeIgniter 3).
- *
- * Included once by auth/login.php and controlled by assets/js/recovery.js.
- * The three existing steps and all their IDs, name attributes and API URLs
- * are deliberately preserved. No inline JS, no jQuery, no new backend fields.
- *
- * Workflow: username -> security answer -> new password.
- * This is NOT the removed recovery-question enrollment modal.
- *
- * Bootstrap 5.3 RTL owns layout, state utilities, forms and modals;
- * Font Awesome is loaded centrally by layouts/header.php.
- */
-?>
 <div
     class="modal fade tz-modal"
     id="recoveryModal"

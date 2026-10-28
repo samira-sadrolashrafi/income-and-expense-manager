@@ -10,7 +10,6 @@ class Auth_api extends BaseApiController
 
     public function __construct()
     {
-        // Registration, login and account recovery are available before authentication.
         parent::__construct(false);
 
         $this->load->helper('validation');
@@ -261,10 +260,6 @@ class Auth_api extends BaseApiController
 
     public function logout()
     {
-        if (!$this->require_authenticated_user()) {
-            return;
-        }
-
         if (!$this->auth_service->logout()) {
             return $this->respond_json(
                 false,

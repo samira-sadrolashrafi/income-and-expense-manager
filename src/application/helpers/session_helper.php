@@ -58,6 +58,7 @@ function isLoggedIn()
     $CI->session->set_userdata(array(
         'user_id' => (int) $user->id,
         'username' => $user->username,
+        'avatar' => $user->avatar,
         'logged_in' => true
     ));
 

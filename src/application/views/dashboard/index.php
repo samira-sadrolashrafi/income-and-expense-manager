@@ -1,40 +1,16 @@
 <?php
 defined('BASEPATH') OR exit('No direct script access allowed');
 
-/**
- * Tarazino | Dashboard view (CI3 + Bootstrap 5.3 RTL + Font Awesome).
- *
- * This view is presentation-only. It does NOT fabricate financial numbers or
- * compute reports in PHP. Existing dashboard.js IDs are preserved so current
- * balance, debt, recent transactions and their modals remain usable.
- *
- * Financial report API supplies the selected-period income, expense and
- * cashflow chart. Balance and negative-balance debt are not date filtered.
- * All displayed dates use the existing Jalali date picker adapter; APIs use ISO.
- */
-$username = isset($username) && is_string($username) && trim($username) !== ''
-    ? trim($username)
-    : 'کاربر';
-$display_name = isset($display_name) && is_string($display_name) && trim($display_name) !== ''
-    ? trim($display_name)
-    : $username;
-
-$balance_url = site_url('api/dashboard/balance');
-$categories_url = site_url('api/categories');
-$transactions_url = site_url('api/transactions');
-$categories_page_url = site_url('categories');
-$transactions_page_url = site_url('transactions');
-
 $this->load->view('layouts/header', array(
     'page_title' => 'داشبورد',
-    'page_styles' => array(base_url('assets/css/dashboard.css?v=' . filemtime(FCPATH . 'assets/css/dashboard.css')))
+    'page_styles' => array(base_url('assets/css/dashboard.css'))
 ));
 ?>
 
 <div class="container-fluid dashboard-shell px-0"
-     data-balance-url="<?php echo html_escape($balance_url); ?>"
-     data-categories-url="<?php echo html_escape($categories_url); ?>"
-     data-transactions-url="<?php echo html_escape($transactions_url); ?>"
+     data-balance-url="<?php echo html_escape(site_url('api/dashboard/balance')); ?>"
+     data-categories-url="<?php echo html_escape(site_url('api/categories')); ?>"
+     data-transactions-url="<?php echo html_escape(site_url('api/transactions')); ?>"
      data-cashflow-url="<?php echo html_escape(site_url('api/dashboard/cashflow')); ?>">
     <div class="row g-0">
         <?php $this->load->view('layouts/app_sidebar', array('active_page' => 'dashboard')); ?>
@@ -43,26 +19,24 @@ $this->load->view('layouts/header', array(
             <?php $this->load->view('layouts/app_header', array(
                 'app_page_title' => 'داشبورد',
                 'app_page_description' => 'نمای کلی و تحلیل وضعیت مالی شما',
-                'app_username' => $display_name
+                'app_username' => $username
             )); ?>
 
             <div class="px-3 px-xl-4 pt-4">
                 <div id="dashboardMessage" class="alert d-none" role="alert" aria-live="polite"></div>
 
-                <!-- Intro: the financial status cards are kept independent of chart filtering. -->
                 <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
                     <div>
-                        <h2 class="h4 fw-bold mb-1">سلام، <?php echo html_escape($display_name); ?> <span aria-hidden="true">👋</span></h2>
+                        <h2 class="h4 fw-bold mb-1">سلام، <?php echo html_escape($username); ?> <span aria-hidden="true">👋</span></h2>
                         <p class="text-body-secondary small mb-0">با ترازینو، کنترل دخل‌وخرجت ساده‌تر میشه!</p>
                     </div>
                     <a class="btn btn-outline-secondary btn-sm d-inline-flex align-items-center gap-2"
-                       href="<?php echo html_escape($transactions_page_url); ?>">
+                       href="<?php echo html_escape(site_url('transactions')); ?>">
                         <i class="fa-solid fa-clock-rotate-left" aria-hidden="true"></i>
                         مشاهده تراکنش‌ها
                     </a>
                 </div>
 
-                <!-- One shared filter for the financial chart and the period totals. -->
                 <section class="card dashboard-card mb-4" aria-labelledby="dashboardDateHeading" id="dashboardDateFilter">
                     <div class="card-body py-3 px-3 px-md-4">
                         <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
@@ -84,7 +58,6 @@ $this->load->view('layouts/header', array(
                                 <label class="btn btn-outline-primary btn-sm" for="dashboardPeriodCustom">بازه دلخواه</label>
                             </div>
                         </div>
-                        <!-- Jalali adapter shows Persian dates while hidden native inputs hold ISO dates. -->
                         <div class="row g-2 align-items-end mt-2 d-none" id="dashboardCustomRange" aria-label="تاریخ شروع و پایان بازه دلخواه">
                             <div class="col-12 col-md-4 col-xl-3">
                                 <label for="dashboardDateFrom" class="form-label small mb-1">از تاریخ</label>
@@ -107,7 +80,6 @@ $this->load->view('layouts/header', array(
                     </div>
                 </section>
 
-                <!-- Uniform four-column KPI grid; Bootstrap owns card widths. -->
                 <section class="row row-cols-1 row-cols-sm-2 row-cols-xl-4 g-3 mb-3" aria-label="شاخص‌های مالی">
                     <div class="col">
                         <article class="card dashboard-card tz-kpi h-100 border-primary-subtle">
@@ -159,7 +131,6 @@ $this->load->view('layouts/header', array(
                     </div>
                 </section>
 
-                <!-- Quick actions live separately from KPIs, preserving equal card sizes. -->
                 <section class="d-flex flex-wrap align-items-center gap-2 mb-4" aria-label="عملیات سریع">
                     <button type="button" class="btn btn-success" id="addDashboardTransactionButton" data-bs-toggle="modal"
                             data-bs-target="#dashboardTransactionModal" disabled>
@@ -176,7 +147,6 @@ $this->load->view('layouts/header', array(
                     </button>
                 </section>
 
-                <!-- The selected period controls the income, expense, and balance trend chart. -->
                 <div class="row g-3 mb-4">
                     <div class="col-12">
                         <section class="card dashboard-card h-100" aria-labelledby="cashflowChartHeading">
@@ -205,13 +175,12 @@ $this->load->view('layouts/header', array(
                         <h3 id="recentTransactionsHeading" class="h6 fw-bold mb-0">
                             <i class="fa-solid fa-clock-rotate-left text-primary me-2" aria-hidden="true"></i>آخرین تراکنش‌ها
                         </h3>
-                        <a class="link-primary small text-decoration-none" href="<?php echo html_escape($transactions_page_url); ?>">
+                        <a class="link-primary small text-decoration-none" href="<?php echo html_escape(site_url('transactions')); ?>">
                             مشاهده همه <i class="fa-solid fa-arrow-left ms-1" aria-hidden="true"></i>
                         </a>
                     </div>
                     <div class="card-body p-0">
                         <div class="table-responsive">
-                            <!-- Keep exactly five columns until the transaction JS module is upgraded. -->
                             <table class="table table-hover align-middle mb-0">
                                 <thead class="table-light">
                                     <tr>
@@ -230,14 +199,11 @@ $this->load->view('layouts/header', array(
                     </div>
                 </section>
 
-                <!-- Legacy JS compatibility only. The final dashboard does not display a redundant category list. -->
-                <ul id="dashboardCategoriesList" class="d-none" aria-hidden="true"></ul>
             </div>
         </main>
     </div>
 </div>
 
-<!-- Manual balance adjustment: existing service ADDS this signed amount to current balance. -->
 <div class="modal fade tz-modal" id="balanceModal" tabindex="-1" aria-labelledby="balanceModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
@@ -257,9 +223,6 @@ $this->load->view('layouts/header', array(
                     </div>
                     <div id="balanceInputHelp" class="form-text">مثال: 500000 برای افزایش یا -200000 برای کاهش.</div>
                     <div id="balanceInputError" class="invalid-feedback">مبلغ صحیح معتبر وارد کنید.</div>
-                    <label for="balanceAdjustmentNote" class="form-label small mt-3">توضیحات (اختیاری)</label>
-                    <textarea id="balanceAdjustmentNote" class="form-control" rows="2" disabled
-                              placeholder="ثبت توضیحات پس از پیاده‌سازی تاریخچه تغییرات فعال می‌شود."></textarea>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">انصراف</button>
@@ -272,7 +235,6 @@ $this->load->view('layouts/header', array(
     </div>
 </div>
 
-<!-- Destructive confirmation; current API sets stored balance to 0. -->
 <div class="modal fade tz-modal" id="resetBalanceModal" tabindex="-1" aria-labelledby="resetBalanceModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
@@ -297,10 +259,8 @@ $this->load->view('layouts/header', array(
     </div>
 </div>
 
-<!-- Shared transaction form, existing IDs, validation hooks and API behavior preserved. -->
 <?php $this->load->view('transactions/form_modal', array('form_prefix' => 'dashboardTransaction')); ?>
 
-<!-- Quick add category is submitted through the dashboard JavaScript module. -->
 <div class="modal fade tz-modal" id="dashboardAddCategoryModal" tabindex="-1" aria-labelledby="dashboardAddCategoryTitle" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
@@ -325,7 +285,7 @@ $this->load->view('layouts/header', array(
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">انصراف</button>
-                    <a class="btn btn-primary" href="<?php echo html_escape($categories_page_url); ?>">
+                    <a class="btn btn-primary" href="<?php echo html_escape(site_url('categories')); ?>">
                         ادامه در صفحه دسته‌بندی‌ها <i class="fa-solid fa-arrow-left ms-1" aria-hidden="true"></i>
                     </a>
                 </div>

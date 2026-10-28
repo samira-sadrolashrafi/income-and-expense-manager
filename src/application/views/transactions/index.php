@@ -1,63 +1,25 @@
-<?php
-defined('BASEPATH') OR exit('No direct script access allowed');
-
-/**
- * Tarazino | Transactions page
- * CodeIgniter 3, Bootstrap 5.3 RTL.
- */
-
-$transactions_api_url = site_url('api/transactions');
-$categories_api_url = site_url('api/categories');
-
-$view_username = isset($display_name)
-    && is_string($display_name)
-    && trim($display_name) !== ''
-        ? trim($display_name)
-        : (
-            isset($username)
-            && is_string($username)
-            && trim($username) !== ''
-                ? trim($username)
-                : 'کاربر'
-        );
-
-$this->load->view('layouts/header', array(
+<?php $this->load->view('layouts/header', [
     'page_title' => 'مدیریت تراکنش‌ها',
-    'page_styles' => array(
-        base_url(
-            'assets/css/dashboard.css?v=' .
-            filemtime(FCPATH . 'assets/css/dashboard.css')
-        )
-    )
-));
-?>
+    'page_styles' => [base_url('assets/css/dashboard.css')]
+]); ?>
 
 <div class="container-fluid dashboard-shell px-0">
     <div class="row g-0">
 
-        <?php
-        $this->load->view(
-            'layouts/app_sidebar',
-            array('active_page' => 'transactions')
-        );
-        ?>
+        <?php $this->load->view('layouts/app_sidebar', ['active_page' => 'transactions']); ?>
 
         <main
             class="col-lg-9 col-xl-10 dashboard-main"
             id="transactionsMain"
             data-component="transactions-page"
-            data-transactions-api-url="<?php echo html_escape($transactions_api_url); ?>"
-            data-categories-api-url="<?php echo html_escape($categories_api_url); ?>"
+            data-transactions-api-url="<?php echo html_escape(site_url('api/transactions')); ?>"
+            data-categories-api-url="<?php echo html_escape(site_url('api/categories')); ?>"
         >
-
-            <?php
-            $this->load->view('layouts/app_header', array(
+            <?php $this->load->view('layouts/app_header', [
                 'app_page_title' => 'تراکنش‌ها',
-                'app_page_description' =>
-                    'ثبت، ویرایش، مدیریت و بازیابی درآمدها و هزینه‌ها',
-                'app_username' => $view_username
-            ));
-            ?>
+                'app_page_description' => 'ثبت، ویرایش، مدیریت و بازیابی درآمدها و هزینه‌ها',
+                'app_username' => $username
+            ]); ?>
 
             <div class="px-3 px-xl-4 pt-4">
 

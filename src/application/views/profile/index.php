@@ -1,745 +1,204 @@
-<?php
-defined('BASEPATH') OR exit('No direct script access allowed');
-
-/**
- * Tarazino | Profile page (presentation layer, CodeIgniter 3).
- *
- * Bootstrap 5.3 RTL handles the layout, cards, inputs, modal and color modes.
- * User icons come from Font Awesome, loaded by layouts/header.php.
- * Future Vue components: ProfilePage, AccountDetails, AvatarPicker,
- * PasswordSettings. No data queries or API writes here.
- *
- * Future controller may pass $profile (array or object) with:
- * first_name, last_name, username, email, avatar, question_id.
- * Save requests are handled by Profile_api and the scoped form token from Profile.php.
- */
-
-$profile_data = array();
-if (isset($profile) && (is_array($profile) || is_object($profile))) {
-    $profile_data = (array) $profile;
-} elseif (isset($user) && (is_array($user) || is_object($user))) {
-    $profile_data = (array) $user;
-}
-
-$session_username = isset($username) && is_string($username) ? trim($username) : '';
-if ($session_username === '' && isset($this->session)) {
-    $session_value = $this->session->userdata('username');
-    $session_username = is_string($session_value) ? trim($session_value) : '';
-}
-
-$profile_first_name = isset($profile_data['first_name']) && is_string($profile_data['first_name'])
-    ? $profile_data['first_name'] : '';
-$profile_last_name = isset($profile_data['last_name']) && is_string($profile_data['last_name'])
-    ? $profile_data['last_name'] : '';
-$profile_username = isset($profile_data['username']) && is_string($profile_data['username'])
-    ? $profile_data['username'] : $session_username;
-$profile_email = isset($profile_data['email']) && is_string($profile_data['email'])
-    ? $profile_data['email'] : '';
-$profile_question_id = isset($profile_data['question_id'])
-    ? (string) $profile_data['question_id'] : '';
-
-// Use the same avatar URL contract as layouts/app_header.php.
-$avatar_value = isset($profile_data['avatar']) && is_string($profile_data['avatar'])
-    ? trim($profile_data['avatar']) : '';
-if ($avatar_value === '' && isset($this->session)) {
-    $session_avatar = $this->session->userdata('avatar');
-    $avatar_value = is_string($session_avatar) ? trim($session_avatar) : '';
-}
-
-$profile_avatar_src = '';
-if ($avatar_value !== '') {
-    $avatar_scheme = parse_url($avatar_value, PHP_URL_SCHEME);
-
-    if (is_string($avatar_scheme)) {
-        if (in_array(strtolower($avatar_scheme), array('http', 'https'), TRUE)
-            && filter_var($avatar_value, FILTER_VALIDATE_URL)) {
-            $profile_avatar_src = $avatar_value;
-        }
-    } elseif (strpos($avatar_value, '//') !== 0
-        && strpos($avatar_value, '\\') === FALSE
-        && strpos($avatar_value, '?') === FALSE
-        && strpos($avatar_value, '#') === FALSE
-        && !preg_match('#(^|/)\.\.(/|$)#', $avatar_value)) {
-        $profile_avatar_src = base_url(ltrim($avatar_value, '/'));
-    }
-}
-
-$this->load->config('recovery_questions');
-$profile_questions = $this->config->item('recovery_questions');
-$profile_questions = is_array($profile_questions) ? $profile_questions : array();
-
-$this->load->view('layouts/header', array(
+<?php $this->load->view('layouts/header', array(
     'page_title' => 'پروفایل',
-    'page_styles' => array(
-        base_url('assets/css/dashboard.css?v=' . filemtime(FCPATH . 'assets/css/dashboard.css'))
-    )
-));
-?>
+    'page_styles' => array(base_url('assets/css/dashboard.css'))
+)); ?>
 
-<div class="container-fluid dashboard-shell px-0">
-    <div class="row g-0">
+<div id="profileApp">
+    <div class="container-fluid dashboard-shell px-0">
+        <div class="row g-0">
+            <?php $this->load->view('layouts/app_sidebar', array('active_page' => 'profile')); ?>
 
-        <?php $this->load->view('layouts/app_sidebar', array('active_page' => 'profile')); ?>
+            <main class="col-lg-9 col-xl-10 dashboard-main" id="profileMain">
+                <?php $this->load->view('layouts/app_header', array(
+                    'app_page_title' => 'پروفایل',
+                    'app_page_description' => 'اطلاعات حساب خود را مدیریت کنید.',
+                    'app_username' => $username
+                )); ?>
 
-        <main
-            class="col-lg-9 col-xl-10 dashboard-main"
-            id="profileMain"
-            data-component="profile-page"
-            data-profile-api-url="<?php echo html_escape(site_url('api/profile')); ?>"
-            data-delete-account-api-url="<?php echo html_escape(site_url('api/profile/delete-account')); ?>"
-            data-login-url="<?php echo html_escape(site_url('login')); ?>"
-        >
-            <?php
-            $this->load->view('layouts/app_header', array(
-                'app_page_title' => 'پروفایل',
-                'app_page_description' => 'اطلاعات حساب خود را مدیریت کنید.',
-                'app_username' => $profile_username,
-                'app_avatar_url' => $avatar_value
-            ));
-            ?>
+                <div class="px-3 px-xl-4 py-4">
+                    <h2 class="h5 fw-bold mb-4">تنظیمات پروفایل</h2>
 
-            <div class="px-3 px-xl-4 py-4">
-
-                <div class="mb-4">
-                    <h2 class="h5 fw-bold mb-1">
-                        <i class="fa-regular fa-id-card text-primary me-2" aria-hidden="true"></i>
-                        تنظیمات پروفایل
-                    </h2>
-                    <p class="small text-body-secondary mb-0">
-                        اطلاعات حساب، تصویر و رمز عبور را مدیریت کنید.
-                    </p>
-                </div>
-
-                <!-- Profile update form -->
-                <form
-                    id="profileForm"
-                    data-component="profile-form"
-                    enctype="multipart/form-data"
-                    novalidate
-                >
-                    <div class="d-flex flex-column gap-3">
-
-                        <!-- Account information -->
-                        <section
-                            class="card dashboard-card"
-                            aria-labelledby="profileAccountHeading"
-                            data-component="account-details"
-                        >
+                    <form id="profileForm" method="post" enctype="multipart/form-data">
+                        <section class="card dashboard-card mb-3">
                             <div class="card-body p-3 p-md-4">
+                                <h3 class="h6 fw-bold mb-4" id="profileAccountHeading">اطلاعات حساب کاربری</h3>
 
-                                <div class="d-flex align-items-center gap-3 mb-4">
-                                    <span
-                                        class="d-inline-flex align-items-center justify-content-center rounded-3 bg-primary-subtle text-primary flex-shrink-0"
-                                        style="width: 42px; height: 42px;"
-                                        aria-hidden="true"
-                                    >
-                                        <i class="fa-solid fa-user-gear"></i>
-                                    </span>
-
-                                    <div>
-                                        <h3 class="h6 fw-bold mb-0" id="profileAccountHeading">
-                                            اطلاعات حساب کاربری
-                                        </h3>
-                                    </div>
-                                </div>
-
-                                <div class="row g-4 align-items-start">
-
-                                    <!-- Personal information and recovery settings -->
-                                    <div class="col-12 col-xl-9 order-2 order-xl-1">
+                                <div class="row g-4">
+                                    <div class="col-12 col-xl-9">
                                         <div class="row g-3">
-
-                                            <div class="col-12 col-md-6">
-                                                <label class="form-label fw-medium" for="profileFirstName">
-                                                    نام
-                                                    <span class="text-danger" aria-hidden="true">*</span>
-                                                </label>
-
-                                                <div class="input-group">
-                                                    <span class="input-group-text">
-                                                        <i class="fa-regular fa-user" aria-hidden="true"></i>
-                                                    </span>
-
-                                                    <input
-                                                        class="form-control"
-                                                        type="text"
-                                                        id="profileFirstName"
-                                                        name="first_name"
-                                                        maxlength="100"
-                                                        autocomplete="given-name"
-                                                        required
-                                                        value="<?php echo html_escape($profile_first_name); ?>"
-                                                    >
-                                                </div>
+                                            <div class="col-md-6">
+                                                <label for="profileFirstName" class="form-label">نام</label>
+                                                <input id="profileFirstName" name="first_name" class="form-control" maxlength="100" required>
                                             </div>
 
-                                            <div class="col-12 col-md-6">
-                                                <label class="form-label fw-medium" for="profileLastName">
-                                                    نام خانوادگی
-                                                    <span class="text-danger" aria-hidden="true">*</span>
-                                                </label>
-
-                                                <div class="input-group">
-                                                    <span class="input-group-text">
-                                                        <i class="fa-regular fa-user" aria-hidden="true"></i>
-                                                    </span>
-
-                                                    <input
-                                                        class="form-control"
-                                                        type="text"
-                                                        id="profileLastName"
-                                                        name="last_name"
-                                                        maxlength="100"
-                                                        autocomplete="family-name"
-                                                        required
-                                                        value="<?php echo html_escape($profile_last_name); ?>"
-                                                    >
-                                                </div>
+                                            <div class="col-md-6">
+                                                <label for="profileLastName" class="form-label">نام خانوادگی</label>
+                                                <input id="profileLastName" name="last_name" class="form-control" maxlength="100" required>
                                             </div>
 
-                                            <div class="col-12 col-md-6">
-                                                <label class="form-label fw-medium" for="profileUsername">
-                                                    نام کاربری
-                                                    <span class="text-danger" aria-hidden="true">*</span>
-                                                </label>
-
-                                                <div class="input-group">
-                                                    <span class="input-group-text">
-                                                        <i class="fa-solid fa-at" aria-hidden="true"></i>
-                                                    </span>
-
-                                                    <input
-                                                        class="form-control"
-                                                        type="text"
-                                                        id="profileUsername"
-                                                        name="username"
-                                                        maxlength="100"
-                                                        autocomplete="username"
-                                                        required
-                                                        dir="ltr"
-                                                        value="<?php echo html_escape($profile_username); ?>"
-                                                    >
-                                                </div>
+                                            <div class="col-md-6">
+                                                <label for="profileUsername" class="form-label">نام کاربری</label>
+                                                <input id="profileUsername" name="username" class="form-control" dir="ltr" maxlength="100" required>
                                             </div>
 
-                                            <div class="col-12 col-md-6">
-                                                <label class="form-label fw-medium" for="profileEmail">
-                                                    ایمیل
-                                                    <span class="text-danger" aria-hidden="true">*</span>
-                                                </label>
-
-                                                <div class="input-group">
-                                                    <span class="input-group-text">
-                                                        <i class="fa-regular fa-envelope" aria-hidden="true"></i>
-                                                    </span>
-
-                                                    <input
-                                                        class="form-control"
-                                                        type="email"
-                                                        id="profileEmail"
-                                                        name="email"
-                                                        maxlength="191"
-                                                        autocomplete="email"
-                                                        required
-                                                        dir="ltr"
-                                                        value="<?php echo html_escape($profile_email); ?>"
-                                                    >
-                                                </div>
+                                            <div class="col-md-6">
+                                                <label for="profileEmail" class="form-label">ایمیل</label>
+                                                <input id="profileEmail" name="email" type="email" class="form-control" dir="ltr" maxlength="191" required>
                                             </div>
 
                                             <div class="col-12">
-                                                <label class="form-label fw-medium" for="profileRecoveryQuestion">
-                                                    سؤال بازیابی حساب
-                                                </label>
-
-                                                <div class="input-group">
-                                                    <span class="input-group-text">
-                                                        <i class="fa-regular fa-circle-question" aria-hidden="true"></i>
-                                                    </span>
-
-                                                    <select
-                                                        class="form-select"
-                                                        id="profileRecoveryQuestion"
-                                                        name="question_id"
-                                                    >
-                                                        <option value="">
-                                                            بدون تغییر سؤال بازیابی
-                                                        </option>
-
-                                                        <?php foreach ($profile_questions as $question_id => $question_label): ?>
-                                                            <option
-                                                                value="<?php echo (int) $question_id; ?>"
-                                                                <?php echo $profile_question_id === (string) $question_id ? 'selected' : ''; ?>
-                                                            >
-                                                                <?php echo html_escape($question_label); ?>
-                                                            </option>
-                                                        <?php endforeach; ?>
-                                                    </select>
-                                                </div>
+                                                <label for="profileRecoveryQuestion" class="form-label">سؤال بازیابی حساب</label>
+                                                <select id="profileRecoveryQuestion" name="question_id"
+                                                        class="form-select">
+                                                    <option value="">انتخاب سؤال بازیابی</option>
+                                                </select>
                                             </div>
 
                                             <div class="col-12">
-                                                <label class="form-label fw-medium" for="profileRecoveryAnswer">
-                                                    پاسخ جدید سؤال بازیابی
-                                                </label>
-
-                                                <div class="input-group">
-                                                    <span class="input-group-text">
-                                                        <i class="fa-solid fa-shield-halved" aria-hidden="true"></i>
-                                                    </span>
-
-                                                    <input
-                                                        class="form-control"
-                                                        type="password"
-                                                        id="profileRecoveryAnswer"
-                                                        name="recovery_answer"
-                                                        minlength="6"
-                                                        maxlength="256"
-                                                        autocomplete="off"
-                                                        placeholder="فقط برای تغییر پاسخ وارد کنید"
-                                                    >
-                                                </div>
-
-                                                <div class="form-text">
-                                                    پاسخ فعلی نمایش داده نمی‌شود. برای تغییر سؤال یا پاسخ، احراز هویت با رمز فعلی لازم است.
-                                                </div>
+                                                <label for="profileRecoveryAnswer" class="form-label">پاسخ جدید سؤال بازیابی</label>
+                                                <input id="profileRecoveryAnswer" name="recovery_answer" type="password"
+                                                       class="form-control"
+                                                       placeholder="فقط برای تغییر پاسخ وارد کنید">
+                                                <div class="form-text">تغییر سؤال یا پاسخ به رمز عبور فعلی نیاز دارد.</div>
                                             </div>
-
                                         </div>
                                     </div>
 
-                                    <!-- Avatar picker -->
-                                    <div
-                                        class="col-12 col-xl-3 order-1 order-xl-2"
-                                        data-component="avatar-picker"
-                                    >
-                                        <div class="bg-body-tertiary rounded-3 p-3 text-center">
+                                    <div class="col-12 col-xl-3 text-center">
+                                        <img id="profileAvatarImage"
+                                             class="tz-profile-avatar shadow-sm mb-3 d-none" width="96" height="96" alt="عکس پروفایل">
 
-                                            <div class="position-relative d-inline-flex mb-3">
-                                                <img
-                                                    id="profileAvatarImage"
-                                                    class="tz-profile-avatar shadow-sm <?php echo $profile_avatar_src === '' ? 'd-none' : ''; ?>"
-                                                    src="<?php echo html_escape($profile_avatar_src); ?>"
-                                                    alt="تصویر پروفایل شما"
-                                                    width="96"
-                                                    height="96"
-                                                >
+                                        <span id="profileAvatarFallback"
+                                              class="rounded-circle bg-primary-subtle text-primary d-inline-flex align-items-center justify-content-center mb-3"
+                                              style="width:96px;height:96px">
+                                            <i class="fa-solid fa-user fa-2xl"></i>
+                                        </span>
 
-                                                <span
-                                                    id="profileAvatarFallback"
-                                                    class="rounded-circle bg-primary-subtle text-primary d-inline-flex align-items-center justify-content-center shadow-sm <?php echo $profile_avatar_src !== '' ? 'd-none' : ''; ?>"
-                                                    style="width: 96px; height: 96px;"
-                                                    aria-label="تصویر پیش‌فرض پروفایل"
-                                                >
-                                                    <i class="fa-solid fa-user fa-2xl" aria-hidden="true"></i>
-                                                </span>
-                                            </div>
-
-                                            <div class="d-grid gap-2">
-                                                <button
-                                                    class="btn btn-outline-primary btn-sm"
-                                                    type="button"
-                                                    data-bs-toggle="modal"
-                                                    data-bs-target="#profileAvatarModal"
-                                                >
-                                                    <i class="fa-solid fa-camera me-1" aria-hidden="true"></i>
-                                                    تغییر عکس
-                                                </button>
-
-                                                <button
-                                                    class="btn btn-outline-danger btn-sm"
-                                                    type="button"
-                                                    id="profileRemoveAvatar"
-                                                >
-                                                    <i class="fa-regular fa-trash-can me-1" aria-hidden="true"></i>
-                                                    حذف عکس
-                                                </button>
-                                            </div>
-
-                                            <p class="text-body-secondary small mb-0 mt-2">
-                                                JPG، PNG یا WebP تا ۲ مگابایت
-                                            </p>
+                                        <div class="d-grid gap-2">
+                                            <button type="button" class="btn btn-outline-primary btn-sm"
+                                                    data-bs-toggle="modal" data-bs-target="#profileAvatarModal">
+                                                تغییر عکس
+                                            </button>
+                                            <button type="button" id="profileRemoveAvatar"
+                                                    class="btn btn-outline-danger btn-sm">
+                                                حذف عکس
+                                            </button>
                                         </div>
+                                        <p class="small text-body-secondary mt-2">JPG، PNG یا WebP تا ۲ مگابایت</p>
                                     </div>
-
                                 </div>
                             </div>
                         </section>
 
-                        <!-- Password settings -->
-                        <section
-                            class="card dashboard-card"
-                            aria-labelledby="profilePasswordHeading"
-                            data-component="password-settings"
-                        >
+                        <section class="card dashboard-card mb-3">
                             <div class="card-body p-3 p-md-4">
-
-                                <div class="d-flex align-items-center gap-3 mb-4">
-                                    <span
-                                        class="d-inline-flex align-items-center justify-content-center rounded-3 bg-primary-subtle text-primary flex-shrink-0"
-                                        style="width: 42px; height: 42px;"
-                                        aria-hidden="true"
-                                    >
-                                        <i class="fa-solid fa-lock"></i>
-                                    </span>
-
-                                    <div>
-                                        <h3 class="h6 fw-bold mb-0" id="profilePasswordHeading">
-                                            تغییر رمز عبور
-                                        </h3>
-                                    </div>
-                                </div>
-
+                                <h3 class="h6 fw-bold mb-4" id="profilePasswordHeading">تغییر رمز عبور</h3>
                                 <div class="row g-3">
-
-                                    <div class="col-12 col-lg-4">
-                                        <label class="form-label fw-medium" for="profileCurrentPassword">
-                                            رمز عبور فعلی
-                                        </label>
-
+                                    <div class="col-md-4">
+                                        <label for="profileCurrentPassword" class="form-label">رمز فعلی</label>
                                         <div class="input-group">
-                                            <span class="input-group-text">
-                                                <i class="fa-solid fa-lock" aria-hidden="true"></i>
-                                            </span>
-
-                                            <input
-                                                type="password"
-                                                class="form-control"
-                                                id="profileCurrentPassword"
-                                                name="current_password"
-                                                autocomplete="current-password"
-                                                placeholder="رمز فعلی خود را وارد کنید"
-                                            >
-
-                                            <button
-                                                type="button"
-                                                class="btn btn-outline-secondary"
-                                                data-profile-password-toggle="profileCurrentPassword"
-                                                aria-label="نمایش رمز عبور فعلی"
-                                                aria-pressed="false"
-                                            >
-                                                <i class="fa-regular fa-eye" aria-hidden="true"></i>
-                                            </button>
+                                            <input id="profileCurrentPassword" name="current_password" class="form-control"
+                                                   type="password">
+                                            <button type="button" class="btn btn-outline-secondary">نمایش</button>
                                         </div>
                                     </div>
 
-                                    <div class="col-12 col-lg-4">
-                                        <label class="form-label fw-medium" for="profileNewPassword">
-                                            رمز عبور جدید
-                                        </label>
-
+                                    <div class="col-md-4">
+                                        <label for="profileNewPassword" class="form-label">رمز جدید</label>
                                         <div class="input-group">
-                                            <span class="input-group-text">
-                                                <i class="fa-solid fa-key" aria-hidden="true"></i>
-                                            </span>
-
-                                            <input
-                                                type="password"
-                                                class="form-control"
-                                                id="profileNewPassword"
-                                                name="new_password"
-                                                autocomplete="new-password"
-                                                minlength="8"
-                                                placeholder="رمز عبور جدید"
-                                            >
-
-                                            <button
-                                                type="button"
-                                                class="btn btn-outline-secondary"
-                                                data-profile-password-toggle="profileNewPassword"
-                                                aria-label="نمایش رمز عبور جدید"
-                                                aria-pressed="false"
-                                            >
-                                                <i class="fa-regular fa-eye" aria-hidden="true"></i>
-                                            </button>
+                                            <input id="profileNewPassword" name="new_password" class="form-control"
+                                                   type="password">
+                                            <button type="button" class="btn btn-outline-secondary">نمایش</button>
                                         </div>
                                     </div>
 
-                                    <div class="col-12 col-lg-4">
-                                        <label class="form-label fw-medium" for="profileConfirmPassword">
-                                            تکرار رمز عبور جدید
-                                        </label>
-
+                                    <div class="col-md-4">
+                                        <label for="profileConfirmPassword" class="form-label">تکرار رمز جدید</label>
                                         <div class="input-group">
-                                            <span class="input-group-text">
-                                                <i class="fa-solid fa-lock" aria-hidden="true"></i>
-                                            </span>
-
-                                            <input
-                                                type="password"
-                                                class="form-control"
-                                                id="profileConfirmPassword"
-                                                name="confirm_password"
-                                                autocomplete="new-password"
-                                                minlength="8"
-                                                placeholder="رمز جدید را دوباره وارد کنید"
-                                            >
-
-                                            <button
-                                                type="button"
-                                                class="btn btn-outline-secondary"
-                                                data-profile-password-toggle="profileConfirmPassword"
-                                                aria-label="نمایش تکرار رمز عبور"
-                                                aria-pressed="false"
-                                            >
-                                                <i class="fa-regular fa-eye" aria-hidden="true"></i>
-                                            </button>
+                                            <input id="profileConfirmPassword" name="confirm_password" class="form-control"
+                                                   type="password">
+                                            <button type="button" class="btn btn-outline-secondary">نمایش</button>
                                         </div>
                                     </div>
-
                                 </div>
-
-                                <p class="form-text mt-3 mb-0">
-                                    رمز جدید باید حداقل ۸ کاراکتر و شامل حروف انگلیسی بزرگ و کوچک، عدد و یک کاراکتر ویژه باشد.
-                                </p>
+                                <p class="form-text mt-3 mb-0">رمز جدید حداقل ۸ کاراکتر و شامل حروف بزرگ و کوچک انگلیسی، عدد و علامت ویژه باشد.</p>
                             </div>
                         </section>
 
-                    </div>
+                        <button id="profileSaveButton" type="button" class="btn btn-primary w-100 btn-lg">ذخیره تغییرات</button>
+                        <div id="profileMessage" class="alert alert-danger mt-3 d-none" role="alert"></div>
+                    </form>
 
-                    <!-- Save profile changes -->
-                    <div class="d-grid mt-3">
-                        <button type="submit" id="profileSaveButton" class="btn btn-primary btn-lg">
-                            <i class="fa-solid fa-floppy-disk me-2" aria-hidden="true"></i>
-                            ذخیره تغییرات
-                        </button>
-                    </div>
-
-                    <div
-                        id="profileMessage"
-                        class="alert alert-info d-none mt-3"
-                        role="status"
-                        aria-live="polite"
-                    ></div>
-
-                    <p class="small text-body-secondary text-center mt-2 mb-0">
-                        اطلاعات حساب و تصویر پس از ذخیره ثبت می‌شوند؛ تغییر رمز و سؤال بازیابی نیازمند رمز فعلی است.
-                    </p>
-                </form>
-
-                <!-- Account deletion section -->
-                <section
-                    class="card border-danger-subtle mt-4"
-                    aria-labelledby="deleteAccountHeading"
-                >
-                    <div class="card-body p-3 p-md-4">
-                        <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3">
-
+                    <section class="card border-danger-subtle mt-4">
+                        <div class="card-body p-3 p-md-4 d-flex flex-wrap align-items-center justify-content-between gap-3">
                             <div>
-                                <h3 class="h6 fw-bold text-danger mb-1" id="deleteAccountHeading">
-                                    <i class="fa-regular fa-trash-can me-2" aria-hidden="true"></i>
-                                    حذف حساب کاربری
-                                </h3>
-
-                                <p class="small text-body-secondary mb-0">
-                                    با حذف حساب، دسترسی شما غیرفعال می‌شود؛ اطلاعات مالی پاک نمی‌شوند و تا ۳۰ روز امکان بازیابی حساب وجود دارد.
-                                </p>
+                                <h3 class="h6 fw-bold text-danger" id="deleteAccountHeading">حذف حساب کاربری</h3>
+                                <p class="small text-body-secondary mb-0">اطلاعات مالی باقی می‌مانند و تا ۳۰ روز امکان بازیابی حساب وجود دارد.</p>
                             </div>
-
-                            <button
-                                type="button"
-                                class="btn btn-outline-danger flex-shrink-0"
-                                data-bs-toggle="modal"
-                                data-bs-target="#deleteAccountModal"
-                            >
-                                حذف حساب کاربری
-                            </button>
-
+                            <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal"
+                                    data-bs-target="#deleteAccountModal">حذف حساب کاربری</button>
                         </div>
-                    </div>
-                </section>
-
-            </div>
-        </main>
-    </div>
-</div>
-
-<!-- Avatar picker modal -->
-<div
-    class="modal fade tz-modal"
-    id="profileAvatarModal"
-    tabindex="-1"
-    aria-labelledby="profileAvatarModalTitle"
-    aria-hidden="true"
->
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-
-            <div class="modal-header">
-                <h2 id="profileAvatarModalTitle" class="modal-title h6 fw-bold mb-0">
-                    <i class="fa-solid fa-camera text-primary me-2" aria-hidden="true"></i>
-                    تغییر تصویر پروفایل
-                </h2>
-
-                <button
-                    type="button"
-                    class="btn-close"
-                    data-bs-dismiss="modal"
-                    aria-label="بستن"
-                ></button>
-            </div>
-
-            <div class="modal-body">
-                <label for="profileAvatarInput" class="form-label">
-                    انتخاب تصویر جدید
-                </label>
-
-                <input
-                    type="file"
-                    class="form-control"
-                    id="profileAvatarInput"
-                    name="avatar"
-                    form="profileForm"
-                    accept="image/jpeg,image/png,image/webp"
-                    aria-describedby="profileAvatarHelp"
-                >
-
-                <p class="form-text mb-0 mt-2" id="profileAvatarHelp">
-                    فایل JPG، PNG یا WebP، حداکثر ۲ مگابایت. تصویر پس از انتخاب پیش‌نمایش داده می‌شود و با دکمه «ذخیره تغییرات» آپلود می‌شود.
-                </p>
-
-                <div
-                    class="alert alert-danger d-none mt-3 mb-0"
-                    id="profileAvatarError"
-                    role="alert"
-                ></div>
-
-                <div
-                    class="alert alert-success d-none mt-3 mb-0"
-                    id="profileAvatarPreviewNotice"
-                    role="status"
-                >
-                    عکس انتخاب شد. پیش‌نمایش آن پس از بستن این پنجره دیده می‌شود؛ هنوز روی سرور ذخیره نشده است.
+                    </section>
                 </div>
-            </div>
-
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-                    بستن
-                </button>
-            </div>
-
+            </main>
         </div>
     </div>
-</div>
 
-<!-- Account deletion modal -->
-<div
-    class="modal fade tz-modal"
-    id="deleteAccountModal"
-    tabindex="-1"
-    aria-labelledby="deleteAccountModalTitle"
-    aria-hidden="true"
->
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-
-            <form id="deleteAccountForm" novalidate>
+    <!-- انتخاب تصویر -->
+    <div class="modal fade" id="profileAvatarModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
                 <div class="modal-header">
-                    <h2 id="deleteAccountModalTitle" class="modal-title h6 fw-bold mb-0 text-danger">
-                        <i class="fa-solid fa-triangle-exclamation me-2" aria-hidden="true"></i>
-                        تأیید حذف حساب کاربری
-                    </h2>
-
-                    <button
-                        type="button"
-                        class="btn-close"
-                        data-bs-dismiss="modal"
-                        aria-label="بستن"
-                    ></button>
+                    <h3 class="modal-title h6">تغییر عکس پروفایل</h3>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="بستن"></button>
                 </div>
-
                 <div class="modal-body">
-
-                    <p class="mb-3">
-                        برای تأیید هویت، رمز عبور فعلی خود را وارد کنید. حساب شما به‌صورت نرم حذف می‌شود و اطلاعات مالی‌تان باقی می‌ماند.
-                    </p>
-
-                    <div class="alert alert-warning small" role="note">
-                        فقط تا ۳۰ روز پس از حذف می‌توانید حسابتان را بازیابی کنید.
-                    </div>
-
-                    <label class="form-label fw-medium" for="deleteAccountPassword">
-                        رمز عبور فعلی
-                    </label>
-
-                    <div class="input-group">
-                        <span class="input-group-text">
-                            <i class="fa-solid fa-lock" aria-hidden="true"></i>
-                        </span>
-
-                        <input
-                            type="password"
-                            class="form-control"
-                            id="deleteAccountPassword"
-                            name="current_password"
-                            autocomplete="current-password"
-                            required
-                        >
-                    </div>
-
-                    <div
-                        class="form-text text-danger d-none"
-                        id="deleteAccountPasswordFeedback"
-                    ></div>
-
-                    <div class="form-check mt-3">
-                        <input
-                            class="form-check-input"
-                            type="checkbox"
-                            value="1"
-                            id="deleteAccountConfirmation"
-                            name="confirm_deletion"
-                            required
-                        >
-
-                        <label class="form-check-label" for="deleteAccountConfirmation">
-                            متوجه‌ام که حسابم غیرفعال می‌شود و حذف آن را تأیید می‌کنم.
-                        </label>
-                    </div>
-
-                    <div
-                        id="deleteAccountMessage"
-                        class="alert d-none mt-3 mb-0"
-                        role="alert"
-                        aria-live="polite"
-                    ></div>
-
+                    <input id="profileAvatarInput" name="avatar" form="profileForm" type="file" class="form-control"
+                           accept="image/jpeg,image/png,image/webp">
+                    <p class="form-text mt-2">پس از انتخاب عکس، روی «ذخیره تغییرات» بزنید.</p>
+                    <div id="profileAvatarError" class="alert alert-danger mt-2 d-none" role="alert"></div>
+                    <div id="profileAvatarPreviewNotice" class="alert alert-success mt-2 d-none" role="status"></div>
                 </div>
-
                 <div class="modal-footer">
-                    <button
-                        type="button"
-                        class="btn btn-secondary"
-                        data-bs-dismiss="modal"
-                    >
-                        انصراف
-                    </button>
-
-                    <button
-                        type="submit"
-                        class="btn btn-danger"
-                        id="deleteAccountSubmitButton"
-                    >
-                        <i class="fa-regular fa-trash-can me-1" aria-hidden="true"></i>
-                        تأیید و حذف حساب
-                    </button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">بستن</button>
                 </div>
+            </div>
+        </div>
+    </div>
 
-            </form>
+    <!-- حذف حساب -->
+    <div class="modal fade" id="deleteAccountModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <form id="deleteAccountForm" method="post">
+                    <div class="modal-header">
+                        <h3 class="modal-title h6 text-danger">تأیید حذف حساب</h3>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="بستن"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p>برای حذف حساب، رمز فعلی را وارد کنید.</p>
+                        <p class="alert alert-warning small">فقط تا ۳۰ روز امکان بازیابی حساب دارید.</p>
+                        <label for="deleteAccountPassword" class="form-label">رمز عبور فعلی</label>
+                        <input id="deleteAccountPassword" name="current_password" type="password"
+                               class="form-control" required>
+                        <div class="form-check mt-3">
+                            <input id="deleteAccountConfirmation" name="confirm_deletion" class="form-check-input" type="checkbox" required>
+                            <label for="deleteAccountConfirmation" class="form-check-label">حذف حسابم را تأیید می‌کنم.</label>
+                        </div>
+                        <div id="deleteAccountMessage" class="alert alert-danger mt-3 d-none" role="alert"></div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">انصراف</button>
+                        <button type="button" id="deleteAccountSubmitButton" class="btn btn-danger">
+                            تأیید و حذف حساب
+                        </button>
+                    </div>
+                </form>
+            </div>
         </div>
     </div>
 </div>
 
 <?php $this->load->view('layouts/logout_modal'); ?>
 
-<?php
-$this->load->view('layouts/footer', array(
-    'page_scripts' => array(
-        base_url('assets/js/api.js'),
-        base_url('assets/js/profile-ui.js'),
-        base_url('assets/js/profile.js'),
-        base_url('assets/js/profile-delete-account.js')
-    )
-));
-?>
+<?php $this->load->view('layouts/footer'); ?>
