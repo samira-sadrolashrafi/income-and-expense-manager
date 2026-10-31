@@ -71,14 +71,12 @@ class Auth_api extends BaseApiController
 
         $questions = $this->config->item('recovery_questions');
 
-        if (!preg_match('/\A[1-5]\z/', $data['question_id'])
-            || !isset($questions[(int) $data['question_id']])) {
+        if (!preg_match('/\A[1-5]\z/', $data['question_id']) || !isset($questions[(int) $data['question_id']])) {
             $errors['question_id_err'] = 'لطفاً یکی از پنج سؤال امنیتی را انتخاب کنید.';
         }
 
-        if (strlen(trim($data['security_answer'])) < 6
-            || strlen($data['security_answer']) > 256) {
-            $errors['security_answer_err'] = 'پاسخ امنیتی باید بین ۶ و ۲۵۶ بایت باشد.';
+        if (strlen(trim($data['security_answer'])) < 6 || strlen($data['security_answer']) > 256) {
+            $errors['security_answer_err'] = 'پاسخ امنیتی باید بین ۶ و ۲۵۶ کاراکتر باشد.';
         }
 
         if (empty($errors['username_err'])) {
@@ -93,21 +91,11 @@ class Auth_api extends BaseApiController
             }
         }
 
-        if (!empty($errors['first_name_err'])
-            || !empty($errors['last_name_err'])
-            || !empty($errors['username_err'])
-            || !empty($errors['email_err'])
-            || !empty($errors['password_err'])
-            || !empty($errors['confirm_password_err'])
-            || !empty($errors['question_id_err'])
-            || !empty($errors['security_answer_err'])) {
+        if (!empty($errors['first_name_err']) || !empty($errors['last_name_err']) || !empty($errors['username_err'])
+            || !empty($errors['email_err']) || !empty($errors['password_err']) || !empty($errors['confirm_password_err'])
+            || !empty($errors['question_id_err']) || !empty($errors['security_answer_err'])) {
 
-            return $this->respond_json(
-                false,
-                'اطلاعات فرم ثبت‌نام را اصلاح کنید.',
-                422,
-                array('errors' => $errors)
-            );
+            return $this->respond_json(false, 'اطلاعات فرم ثبت‌نام را اصلاح کنید.', 422, array('errors' => $errors));
         }
 
         $user_id = $this->auth_service->register($data);
@@ -135,10 +123,6 @@ class Auth_api extends BaseApiController
 
         $username = trim($username);
 
-        if (strlen($username) > 100 || strlen($password) > 1024) {
-            return $this->respond_json(false, 'اطلاعات ورود نامعتبر است.', 422);
-        }
-
         $errors = array(
             'username_err' => '',
             'password_err' => validateLoginPassword($password)
@@ -149,12 +133,7 @@ class Auth_api extends BaseApiController
         }
 
         if (!empty($errors['username_err']) || !empty($errors['password_err'])) {
-            return $this->respond_json(
-                false,
-                'اطلاعات فرم ورود را اصلاح کنید.',
-                422,
-                array('errors' => $errors)
-            );
+            return $this->respond_json(false, 'اطلاعات فرم ورود را اصلاح کنید.', 422, array('errors' => $errors));
         }
 
         $remember = $this->input->post('remember') === '1';
@@ -163,10 +142,7 @@ class Auth_api extends BaseApiController
 
         if (is_array($result)) {
             if ($result['status'] === 'recovery_available') {
-                return $this->respond_json(
-                    false,
-                    'این حساب کاربری حذف شده است، اما هنوز امکان بازیابی آن وجود دارد.',
-                    409,
+                return $this->respond_json(false, 'این حساب کاربری حذف شده است، اما هنوز امکان بازیابی آن وجود دارد.', 409,
                     array(
                         'account_deleted' => true,
                         'recovery_available' => true
@@ -174,10 +150,7 @@ class Auth_api extends BaseApiController
                 );
             }
 
-            return $this->respond_json(
-                false,
-                'مهلت ۳۰ روزه بازیابی این حساب به پایان رسیده است و دیگر امکان بازیابی آن وجود ندارد.',
-                410,
+            return $this->respond_json(false, 'مهلت ۳۰ روزه بازیابی این حساب به پایان رسیده است و دیگر امکان بازیابی آن وجود ندارد.', 410,
                 array(
                     'account_deleted' => true,
                     'recovery_available' => false
@@ -188,12 +161,7 @@ class Auth_api extends BaseApiController
         if (!$result) {
             $errors['password_err'] = 'نام کاربری یا رمز عبور اشتباه است.';
 
-            return $this->respond_json(
-                false,
-                'نام کاربری یا رمز عبور اشتباه است.',
-                401,
-                array('errors' => $errors)
-            );
+            return $this->respond_json(false, 'نام کاربری یا رمز عبور اشتباه است.', 401, array('errors' => $errors));
         }
 
         return $this->respond_json(true, 'با موفقیت وارد شدید.');
@@ -225,17 +193,10 @@ class Auth_api extends BaseApiController
 
         $remember = $this->input->post('remember') === '1';
 
-        $result = $this->auth_service->restore_deleted_account(
-            $username,
-            $password,
-            $remember
-        );
+        $result = $this->auth_service->restore_deleted_account($username, $password, $remember);
 
         if (is_array($result) && $result['status'] === 'recovery_expired') {
-            return $this->respond_json(
-                false,
-                'مهلت ۳۰ روزه بازیابی این حساب به پایان رسیده است.',
-                410,
+            return $this->respond_json(false, 'مهلت ۳۰ روزه بازیابی این حساب به پایان رسیده است.', 410,
                 array(
                     'account_deleted' => true,
                     'recovery_available' => false
@@ -244,28 +205,17 @@ class Auth_api extends BaseApiController
         }
 
         if (!$result) {
-            return $this->respond_json(
-                false,
-                'نام کاربری یا رمز عبور اشتباه است، یا حساب قابل بازیابی نیست.',
-                401
-            );
+            return $this->respond_json(false, 'نام کاربری یا رمز عبور اشتباه است، یا حساب قابل بازیابی نیست.', 401);
         }
 
-        return $this->respond_json(
-            true,
-            'حساب شما با موفقیت بازیابی شد و وارد حساب کاربری شدید.'
-        );
+        return $this->respond_json(true, 'حساب شما با موفقیت بازیابی شد و وارد حساب کاربری شدید.');
     }
 
 
     public function logout()
     {
         if (!$this->auth_service->logout()) {
-            return $this->respond_json(
-                false,
-                'خروج انجام شد، اما حذف توکن از دیتابیس تأیید نشد.',
-                500
-            );
+            return $this->respond_json(false, 'خروج انجام شد، اما حذف توکن از دیتابیس تأیید نشد.', 500);
         }
 
         return $this->respond_json(true, 'با موفقیت خارج شدید.');

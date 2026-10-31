@@ -1,3 +1,4 @@
+
 /** TARAZINO | Categories coordinator: API, filters, pagination, delete/restore. */
 (function (w, d) {
     'use strict';
@@ -53,7 +54,6 @@
         const params = new URLSearchParams();
 
         params.set('page', String(page));
-        params.set('per_page', String(s.perPage));
         params.set('search', s.appliedFilters.search);
         params.set('type', s.appliedFilters.type);
         params.set('sort', s.appliedFilters.sort);
@@ -204,7 +204,6 @@
             const result = await api().get(
                 s.apiUrl + '/deleted'
                 + '?page=' + encodeURIComponent(page)
-                + '&per_page=' + encodeURIComponent(s.perPage)
             );
 
             if (

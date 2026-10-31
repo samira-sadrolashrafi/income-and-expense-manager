@@ -80,11 +80,7 @@ function rememberCookieOptions($expires)
 
 function clearRememberCookie()
 {
-    setcookie(
-        'remember_token',
-        '',
-        rememberCookieOptions(time() - 3600)
-    );
+    setcookie('remember_token','',rememberCookieOptions(time() - 3600));
 
     unset($_COOKIE['remember_token']);
 }

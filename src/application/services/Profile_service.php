@@ -72,8 +72,7 @@ class Profile_service
         // بررسی عکس
         $remove_avatar = isset($request['remove_avatar']) && $request['remove_avatar'] === '1';
 
-        $has_avatar = isset($files['avatar']['error']) &&
-            $files['avatar']['error'] !== UPLOAD_ERR_NO_FILE;
+        $has_avatar = isset($files['avatar']['error']) && $files['avatar']['error'] !== UPLOAD_ERR_NO_FILE;
 
         if ($remove_avatar && $has_avatar) {
             return $this->error('حذف و انتخاب عکس جدید هم‌زمان مجاز نیست.', 422);
@@ -122,8 +121,7 @@ class Profile_service
         try {
             $active_user = $this->CI->Profile_model->find_active_user($user_id);
 
-            if (!$active_user || (($change_password || $change_recovery) &&
-                !password_verify($security['current_password'], $active_user->password))) {
+            if (!$active_user || (($change_password || $change_recovery) && !password_verify($security['current_password'], $active_user->password))) {
 
                 $db->trans_rollback();
                 $this->remove_avatar($new_avatar);
@@ -131,17 +129,10 @@ class Profile_service
                 return $this->error('رمز فعلی اشتباه است یا حساب در دسترس نیست.', 401);
             }
 
-            $saved = $this->CI->Profile_model->update_active_user(
-                $user_id,
-                $data
-            );
+            $saved = $this->CI->Profile_model->update_active_user($user_id,$data);
 
             if ($saved && $change_recovery) {
-                $saved = $this->CI->Profile_model->save_recovery_question(
-                    $user_id,
-                    (int) $security['question_id'],
-                    $security['recovery_answer']
-                );
+                $saved = $this->CI->Profile_model->save_recovery_question($user_id,$security['question_id'],$security['recovery_answer']);
             }
 
             if (!$saved || $db->trans_status() === false) {

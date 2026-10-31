@@ -13,55 +13,30 @@ class Category_model extends CI_Model
             return false;
         }
 
-        return (int) $this->db->insert_id();
+        return $this->db->insert_id();
     }
 
 
     public function find_category_by_id($user_id, $category_id)
     {
-        return $this->db
-            ->where('id', $category_id)
-            ->where('user_id', $user_id)
-            ->get($this->table)
-            ->row();
+        return $this->db->where('id', $category_id)->where('user_id', $user_id)->get($this->table)->row();
     }
 
 
     public function find_categories_by_name($user_id, $name)
     {
-        return $this->db
-            ->where('user_id', $user_id)
-            ->where('name', $name)
-            ->get($this->table)
-            ->result();
+        return $this->db->where('user_id', $user_id)->where('name', $name)->get($this->table)->result();
     }
 
 
     public function find_active_categories_by_user_id($user_id)
     {
-        return $this->db
-            ->where('user_id', $user_id)
-            ->where('deleted_at', null)
-            ->order_by('id', 'DESC')
-            ->get($this->table)
-            ->result();
+        return $this->db->where('user_id', $user_id)->where('deleted_at', null)->order_by('id', 'DESC')->get($this->table)->result();
     }
 
 
-    /**
-     * دریافت یک صفحه از دسته‌بندی‌های فعال با فیلتر و مرتب‌سازی.
-     *
-     * filters:
-     * search = عبارت جست‌وجو در نام دسته‌بندی
-     * type   = all | income | expense
-     * sort   = newest | oldest
-     */
-    public function find_active_categories_by_user_id_paginated(
-        $user_id,
-        $limit,
-        $offset,
-        $filters = array()
-    ) {
+    public function find_active_categories_by_user_id_paginated($user_id,$limit,$offset,$filters = array()) {
+
         $this->apply_active_category_filters($user_id, $filters);
 
         $sort = $filters['sort'] ?? 'newest';
@@ -83,30 +58,16 @@ class Category_model extends CI_Model
     }
 
 
-    /**
-     * شمارش دسته‌بندی‌های فعال مطابق فیلترهای اعمال‌شده.
-     */
-    public function count_active_categories_by_user_id(
-        $user_id,
-        $filters = array()
-    ) {
+    public function count_active_categories_by_user_id($user_id,$filters = array()) {
         $this->apply_active_category_filters($user_id, $filters);
 
         return $this->db->count_all_results();
     }
 
 
-    /**
-     * اعمال فیلترهای دسته‌بندی‌های فعال.
-     */
-    private function apply_active_category_filters(
-        $user_id,
-        $filters = array()
-    ) {
-        $this->db
-            ->from($this->table)
-            ->where('user_id', $user_id)
-            ->where('deleted_at', null);
+    private function apply_active_category_filters($user_id, $filters = array()) {
+
+        $this->db->from($this->table)->where('user_id', $user_id)->where('deleted_at', null);
 
         $search = trim((string) ($filters['search'] ?? ''));
 
@@ -124,27 +85,17 @@ class Category_model extends CI_Model
 
     public function find_deleted_categories_by_user_id($user_id)
     {
-        return $this->db
-            ->where('user_id', $user_id)
-            ->where('deleted_at IS NOT NULL', null, false)
-            ->order_by('deleted_at', 'DESC')
+        return $this->db->where('user_id', $user_id)->where('deleted_at !=', null)->order_by('deleted_at', 'DESC')
             ->order_by('id', 'DESC')
             ->get($this->table)
             ->result();
     }
 
 
-    /**
-     * دریافت یک صفحه از دسته‌بندی‌های حذف‌شده.
-     */
-    public function find_deleted_categories_by_user_id_paginated(
-        $user_id,
-        $limit,
-        $offset
-    ) {
+    public function find_deleted_categories_by_user_id_paginated($user_id,$limit,$offset) {
         return $this->db
             ->where('user_id', $user_id)
-            ->where('deleted_at IS NOT NULL', null, false)
+            ->where('deleted_at !=', null)
             ->order_by('deleted_at', 'DESC')
             ->order_by('id', 'DESC')
             ->limit(max(1, (int) $limit), max(0, (int) $offset))
@@ -153,23 +104,13 @@ class Category_model extends CI_Model
     }
 
 
-    /**
-     * شمارش دسته‌بندی‌های حذف‌شده.
-     */
     public function count_deleted_categories_by_user_id($user_id)
     {
-        return $this->db
-            ->where('user_id', $user_id)
-            ->where('deleted_at IS NOT NULL', null, false)
-            ->count_all_results($this->table);
+        return $this->db->where('user_id', $user_id)->where('deleted_at !=', null)->count_all_results($this->table);
     }
 
 
-    public function update_active_category_by_user(
-        $user_id,
-        $category_id,
-        $data
-    ) {
+    public function update_active_category_by_user($user_id,$category_id,$data) {
         return $this->db
             ->where('id', $category_id)
             ->where('user_id', $user_id)
@@ -178,12 +119,7 @@ class Category_model extends CI_Model
     }
 
 
-    public function soft_delete_category_by_user(
-        $user_id,
-        $category_id,
-        $now,
-        $until
-    ) {
+    public function soft_delete_category_by_user($user_id,$category_id,$now,$until) {
         $querysuccess = $this->db
             ->where('id', $category_id)
             ->where('user_id', $user_id)
@@ -203,7 +139,7 @@ class Category_model extends CI_Model
         $querysuccess = $this->db
             ->where('id', $category_id)
             ->where('user_id', $user_id)
-            ->where('deleted_at IS NOT NULL', null, false)
+            ->where('deleted_at !=', null)
             ->update($this->table, array(
                 'deleted_at' => null,
                 'restore_until' => null,

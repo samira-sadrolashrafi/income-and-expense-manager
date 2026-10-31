@@ -13,47 +13,31 @@ class Transaction_model extends CI_Model
             return false;
         }
 
-        return (int) $this->db->insert_id();
+        return $this->db->insert_id();
     }
 
 
     public function find_transaction_by_id($user_id, $transaction_id)
     {
-        return $this->db
-            ->where('id', $transaction_id)
-            ->where('user_id', $user_id)
-            ->get($this->table)
-            ->row();
+        return $this->db->where('id', $transaction_id)->where('user_id', $user_id)->get($this->table)->row();
     }
 
 
     public function find_active_transactions_by_category($user_id, $category_id)
     {
-        return $this->db
-            ->where('user_id', $user_id)
-            ->where('category_id', $category_id)
-            ->where('deleted_at', null)
-            ->get($this->table)
-            ->result();
+        return $this->db->where('user_id', $user_id)->where('category_id', $category_id)->where('deleted_at', null)->get($this->table)->result();
     }
 
 
     public function has_transactions_by_category($user_id, $category_id)
     {
-        return $this->db
-            ->where('user_id', $user_id)
-            ->where('category_id', $category_id)
-            ->count_all_results($this->table) > 0;
+        return $this->db->where('user_id', $user_id)->where('category_id', $category_id)->count_all_results($this->table) > 0;
     }
 
 
 
-    public function find_active_transactions_by_user_id(
-        $user_id,
-        $limit = null,
-        $offset = 0,
-        $filters = array()
-    ) {
+    public function find_active_transactions_by_user_id($user_id,$limit = null,$offset = 0,$filters = array()) {
+
         $this->apply_active_transaction_filters($user_id, $filters);
 
         $sort = $filters['sort'] ?? 'newest';
@@ -69,8 +53,8 @@ class Transaction_model extends CI_Model
         }
 
         if ($limit !== null) {
-            $limit = max(1, (int) $limit);
-            $offset = max(0, (int) $offset);
+            $limit = max(1, $limit);
+            $offset = max(0, $offset);
 
             $this->db->limit($limit, $offset);
         }
@@ -79,26 +63,16 @@ class Transaction_model extends CI_Model
     }
 
 
-    /**
-     * شمارش کل تراکنش‌های فعال کاربر مطابق فیلترها.
-     */
-    public function count_active_transactions_by_user_id(
-        $user_id,
-        $filters = array()
-    ) {
+    public function count_active_transactions_by_user_id($user_id,$filters = array()) {
+
         $this->apply_active_transaction_filters($user_id, $filters);
 
         return $this->db->count_all_results();
     }
 
 
-    public function find_deleted_transactions_by_user_id(
-        $user_id,
-        $limit = null,
-        $offset = 0
-    ) {
-        $this->db
-            ->select(
+    public function find_deleted_transactions_by_user_id($user_id,$limit = null,$offset = 0) {
+        $this->db->select(
                 'transactions.*,
                  categories.name AS category_name,
                  categories.deleted_at AS category_deleted_at'
@@ -110,17 +84,13 @@ class Transaction_model extends CI_Model
                 'left'
             )
             ->where('transactions.user_id', $user_id)
-            ->where(
-                'transactions.deleted_at IS NOT NULL',
-                null,
-                false
-            )
+            ->where('transactions.deleted_at !=', null)
             ->order_by('transactions.deleted_at', 'DESC')
             ->order_by('transactions.id', 'DESC');
 
         if ($limit !== null) {
-            $limit = max(1, (int) $limit);
-            $offset = max(0, (int) $offset);
+            $limit = max(1, $limit);
+            $offset = max(0, $offset);
 
             $this->db->limit($limit, $offset);
         }
@@ -131,36 +101,18 @@ class Transaction_model extends CI_Model
 
     public function count_deleted_transactions_by_user_id($user_id)
     {
-        return $this->db
-            ->where('user_id', $user_id)
-            ->where(
-                'deleted_at IS NOT NULL',
-                null,
-                false
-            )
-            ->count_all_results($this->table);
+        return $this->db->where('user_id', $user_id)->where('deleted_at !=', null)->count_all_results($this->table);
     }
 
 
-    public function update_active_transaction_by_user(
-        $user_id,
-        $transaction_id,
-        $data
-    ) {
-        return $this->db
-            ->where('id', $transaction_id)
-            ->where('user_id', $user_id)
-            ->where('deleted_at', null)
-            ->update($this->table, $data);
+    public function update_active_transaction_by_user($user_id,$transaction_id,$data) {
+
+        return $this->db->where('id', $transaction_id)->where('user_id', $user_id)->where('deleted_at', null)->update($this->table, $data);
     }
 
 
-    public function soft_delete_transaction_by_user(
-        $user_id,
-        $transaction_id,
-        $deleted_at,
-        $restore_until
-    ) {
+    public function soft_delete_transaction_by_user($user_id,$transaction_id,$deleted_at,$restore_until) {
+
         $is_updated = $this->db
             ->where('id', $transaction_id)
             ->where('user_id', $user_id)
@@ -180,7 +132,7 @@ class Transaction_model extends CI_Model
         $is_updated = $this->db
             ->where('id', $transaction_id)
             ->where('user_id', $user_id)
-            ->where('deleted_at IS NOT NULL', null, false)
+            ->where('deleted_at !=', null)
             ->update($this->table, array(
                 'deleted_at' => null,
                 'restore_until' => null,
@@ -191,15 +143,9 @@ class Transaction_model extends CI_Model
     }
 
 
-    private function apply_active_transaction_filters(
-        $user_id,
-        $filters = array()
-    ) {
-        // Explicit select is required: without it, `SELECT *` returns both
-        // tables' `id` columns and the later (categories.id) overwrites
-        // transactions.id in the result object, breaking edit/delete actions.
-        $this->db
-            ->select('transactions.*')
+    private function apply_active_transaction_filters($user_id,$filters = array()) {
+
+        $this->db->select('transactions.*')
             ->from($this->table)
             ->join(
                 'categories',
@@ -225,11 +171,7 @@ class Transaction_model extends CI_Model
             $this->db->where('categories.type', $type);
         }
 
-        $category_id = filter_var(
-            $filters['category_id'] ?? null,
-            FILTER_VALIDATE_INT,
-            array('options' => array('min_range' => 1))
-        );
+        $category_id = filter_var($filters['category_id'] ?? null, FILTER_VALIDATE_INT,array('options' => array('min_range' => 1)));
 
         if ($category_id !== false && $category_id !== null) {
             $this->db->where('transactions.category_id', $category_id);
@@ -239,17 +181,11 @@ class Transaction_model extends CI_Model
         $date_to = $filters['date_to'] ?? '';
 
         if ($date_from !== '') {
-            $this->db->where(
-                'transactions.transaction_date >=',
-                $date_from
-            );
+            $this->db->where('transactions.transaction_date >=', $date_from);
         }
 
         if ($date_to !== '') {
-            $this->db->where(
-                'transactions.transaction_date <=',
-                $date_to
-            );
+            $this->db->where('transactions.transaction_date <=', $date_to);
         }
     }
 }

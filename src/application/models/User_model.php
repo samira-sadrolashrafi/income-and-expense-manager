@@ -11,7 +11,7 @@ class User_model extends CI_Model
             return false;
         }
 
-        return (int) $this->db->insert_id();
+        return $this->db->insert_id();
     }
 
 

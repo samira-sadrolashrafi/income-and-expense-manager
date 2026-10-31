@@ -77,6 +77,7 @@ $route['auth/recovery/question']['post'] = 'recovery_api/question';
 
 $route['auth/recovery/verify']['post'] = 'recovery_api/verify';
 
+
 $route['auth/recovery/reset']['post'] = 'recovery_api/reset';
 
 $route['auth/recovery/enroll']['post'] = 'recovery_api/enroll';

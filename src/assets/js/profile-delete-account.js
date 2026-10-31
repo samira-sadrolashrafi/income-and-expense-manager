@@ -1,8 +1,8 @@
-/** TARAZINO | Delete-account modal controller. */
-(function (w, d) {
+/** TARAZINO | Delete-account modal. */
+(function (window, document) {
     'use strict';
 
-    const byId = id => d.getElementById(id);
+    const byId = id => document.getElementById(id);
 
     function initialize() {
         const root = byId('profileMain');
@@ -19,19 +19,24 @@
         const messageBox = byId('deleteAccountMessage');
         const passwordFeedback = byId('deleteAccountPasswordFeedback');
 
+        if (!password || !confirmation || !submitButton || !messageBox) return;
+
         let submitting = false;
 
-        function showMessage(text, type = 'danger') {
-            messageBox.textContent = text;
-            messageBox.className = text
-                ? 'alert alert-' + type + ' mt-3 mb-0'
+        function showMessage(message, type) {
+            messageBox.textContent = message || '';
+            messageBox.className = message
+                ? 'alert alert-' + (type || 'danger') + ' mt-3 mb-0'
                 : 'alert d-none mt-3 mb-0';
         }
 
-        function showPasswordError(text) {
-            password.classList.toggle('is-invalid', Boolean(text));
-            passwordFeedback.textContent = text || '';
-            passwordFeedback.classList.toggle('d-none', !text);
+        function showPasswordError(message) {
+            password.classList.toggle('is-invalid', Boolean(message));
+
+            if (passwordFeedback) {
+                passwordFeedback.textContent = message || '';
+                passwordFeedback.classList.toggle('d-none', !message);
+            }
         }
 
         password.addEventListener('input', function () {
@@ -49,7 +54,7 @@
             if (submitting) return;
 
             if (!password.value) {
-                showPasswordError('برای حذف حساب، وارد کردن رمز فعلی الزامی است.');
+                showPasswordError('برای حذف حساب، رمز فعلی را وارد کنید.');
                 password.focus();
                 return;
             }
@@ -63,46 +68,34 @@
             }
 
             if (!endpoint) {
-                showMessage('اطلاعات لازم برای ارسال درخواست موجود نیست. صفحه را تازه‌سازی کنید.');
+                showMessage('آدرس API حذف حساب مشخص نشده است.');
                 return;
             }
 
-            if (!w.TarazinoApi || typeof w.TarazinoApi.post !== 'function') {
+            if (!window.TarazinoApi || typeof window.TarazinoApi.post !== 'function') {
                 showMessage('فایل api.js بارگذاری نشده است. صفحه را تازه‌سازی کنید.');
                 return;
             }
 
             submitting = true;
             submitButton.disabled = true;
-            submitButton.innerHTML =
-                '<span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>در حال ارسال درخواست...';
+            submitButton.textContent = 'در حال ارسال درخواست...';
 
             try {
-                const result = await w.TarazinoApi.post(
-                    endpoint,
-                    new FormData(form)
-                );
-
+                const result = await window.TarazinoApi.post(endpoint, new FormData(form));
                 showMessage(result.message || 'حساب کاربری حذف شد.', 'success');
 
-                const modal = w.bootstrap && w.bootstrap.Modal
-                    ? w.bootstrap.Modal.getOrCreateInstance(modalElement)
-                    : null;
+                if (window.bootstrap && window.bootstrap.Modal) {
+                    window.bootstrap.Modal.getOrCreateInstance(modalElement).hide();
+                }
 
-                if (modal) modal.hide();
-
-                w.location.assign(loginUrl || '/login');
+                window.location.assign(loginUrl || '/login');
             } catch (error) {
-                const text = error && typeof error.message === 'string'
-                    ? error.message
-                    : 'حذف حساب انجام نشد. دوباره تلاش کنید.';
-
-                showMessage(text);
+                showMessage(error.message || 'حذف حساب انجام نشد. دوباره تلاش کنید.');
             } finally {
                 submitting = false;
                 submitButton.disabled = false;
-                submitButton.innerHTML =
-                    '<i class="fa-regular fa-trash-can me-1" aria-hidden="true"></i> تأیید و حذف حساب';
+                submitButton.innerHTML = '<i class="fa-regular fa-trash-can me-1" aria-hidden="true"></i> تأیید و حذف حساب';
             }
         });
 
@@ -114,8 +107,8 @@
         });
     }
 
-    if (d.readyState === 'loading') {
-        d.addEventListener('DOMContentLoaded', initialize, { once: true });
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initialize, { once: true });
     } else {
         initialize();
     }

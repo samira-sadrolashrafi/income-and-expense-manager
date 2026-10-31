@@ -14,14 +14,14 @@ class Account_deletion_service
 
     public function delete_account($user_id, $password)
     {
-        if ((int) $user_id < 1 || !is_string($password) || $password === '') {
+        if ($user_id < 1 || !is_string($password) || $password === '') {
             return $this->failure('درخواست حذف حساب معتبر نیست.', 422);
         }
 
         $db = $this->CI->db;
         $db->trans_begin();
 
-        $user = $this->CI->User_model->find_active_by_id((int) $user_id);
+        $user = $this->CI->User_model->find_active_by_id($user_id);
 
         if (!$user) {
             $db->trans_rollback();
@@ -37,7 +37,7 @@ class Account_deletion_service
         $restore_until = date('Y-m-d H:i:s', strtotime('+30 days'));
 
         $updated = $this->CI->User_model->soft_delete_account(
-            (int) $user_id,
+            $user_id,
             $deleted_at,
             $restore_until
         );

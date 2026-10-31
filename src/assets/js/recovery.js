@@ -1,148 +1,160 @@
-
-/**
- * TARAZINO | Three-step password recovery modal.
- * Username -> security answer -> server nonce -> reset password.
- * No enrollment modal, no auto-login and no client-side authentication.
- */
 (function (window, document) {
     'use strict';
 
-    function start() {
+    document.addEventListener('DOMContentLoaded', function () {
         const modal = document.getElementById('recoveryModal');
         if (!modal) return;
 
-        const $ = id => document.getElementById(id);
-        const forms = [
-            $('recoveryQuestionForm'),
-            $('recoveryVerifyForm'),
-            $('recoveryResetForm')
-        ];
-        const restart = $('recoveryStartOver');
-        const notice = $('recoveryMessage');
-        if (forms.some(form => !form) || !restart || !notice) return;
+        const questionForm = document.getElementById('recoveryQuestionForm');
+        const verifyForm = document.getElementById('recoveryVerifyForm');
+        const resetForm = document.getElementById('recoveryResetForm');
+        const messageBox = document.getElementById('recoveryMessage');
+        const startOver = document.getElementById('recoveryStartOver');
 
-        let busy = false;
-
-        function message(text, kind = 'danger') {
-            notice.textContent = text || '';
-            notice.className = text ? 'alert alert-' + kind : 'alert d-none';
+        function showMessage(message, type) {
+            messageBox.textContent = message;
+            messageBox.className = message
+                ? 'alert alert-' + (type || 'danger')
+                : 'alert d-none';
         }
 
-        function showStep(index) {
-            forms.forEach((form, i) => form.classList.toggle('d-none', i !== index));
-            restart.classList.toggle('d-none', index === 0);
+        function showStep(step) {
+            questionForm.classList.toggle('d-none', step !== 1);
+            verifyForm.classList.toggle('d-none', step !== 2);
+            resetForm.classList.toggle('d-none', step !== 3);
+            startOver.classList.toggle('d-none', step === 1);
         }
 
-        function clearPasswordErrors() {
-            $('recovery_password_err').textContent = '';
-            $('recovery_confirm_err').textContent = '';
-        }
+        function resetForms() {
+            questionForm.reset();
+            verifyForm.reset();
+            resetForm.reset();
 
-        function reset() {
-            forms.forEach(form => form.reset());
-            $('recoveryNonce').value = '';
-            $('recoveryQuestionLabel').textContent = '';
-            clearPasswordErrors();
-            message('');
-            showStep(0);
-        }
+            document.getElementById('recoveryQuestionLabel').textContent = '';
+            document.getElementById('recovery_password_err').textContent = '';
+            document.getElementById('recovery_confirm_err').textContent = '';
 
-        async function submit(form, handler) {
-            form.addEventListener('submit', async event => {
-                event.preventDefault();
-                if (busy) return;
-                const button = form.querySelector('[type="submit"]');
-                const oldLabel = button.textContent;
-                busy = true;
-                button.disabled = true;
-                button.textContent = 'در حال بررسی...';
-                message('');
-                try {
-                    if (!window.TarazinoAuthRequest) {
-                        throw new Error('فایل auth-request.js بارگذاری نشده است.');
-                    }
-                    await handler();
-                } catch (error) {
-                    message(error.message || 'درخواست انجام نشد.');
-                } finally {
-                    busy = false;
-                    button.disabled = false;
-                    button.textContent = oldLabel;
-                }
-            });
-        }
-
-        restart.addEventListener('click', reset);
-        modal.addEventListener('hidden.bs.modal', reset);
-        modal.addEventListener('show.bs.modal', () => {
-            reset();
-            const username = $('username');
-            if (username && username.value.trim()) {
-                $('recoveryUsername').value = username.value.trim();
-            }
-        });
-
-        submit(forms[0], async () => {
-            const username = $('recoveryUsername');
-            username.value = username.value.trim();
-            if (!/^[A-Za-z0-9_]{3,100}$/.test(username.value)) {
-                message('نام کاربری معتبر وارد کنید.');
-                username.focus();
-                return;
-            }
-            const { ok, result } = await window.TarazinoAuthRequest.post(modal.dataset.questionUrl, forms[0]);
-            if (!ok) return message(result.message || 'دریافت سؤال انجام نشد.');
-            if (typeof result.question !== 'string' || !result.question) {
-                throw new Error('سؤال امنیتی از سرور دریافت نشد.');
-            }
-            $('recoveryQuestionLabel').textContent = result.question;
+            showMessage('');
             showStep(1);
-            $('recoveryAnswer').focus();
+        }
+
+        questionForm.addEventListener('submit', async function (event) {
+            event.preventDefault();
+
+            const button = questionForm.querySelector('button[type="submit"]');
+            button.disabled = true;
+            showMessage('');
+
+            try {
+                const response = await window.TarazinoAuthRequest.post(
+                    modal.dataset.questionUrl,
+                    questionForm
+                );
+
+                if (!response.ok) {
+                    showMessage(response.result.message || 'دریافت سؤال انجام نشد.');
+                    return;
+                }
+
+                document.getElementById('recoveryQuestionLabel').textContent = response.result.question;
+
+                document.getElementById('recoveryVerifyUsername').value =
+                    document.getElementById('recoveryUsername').value.trim();
+
+                showStep(2);
+            } catch (error) {
+                showMessage(error.message || 'درخواست انجام نشد.');
+            } finally {
+                button.disabled = false;
+            }
         });
 
-        submit(forms[1], async () => {
-            const answer = $('recoveryAnswer');
-            if (!answer.value.trim()) {
-                message('پاسخ سؤال امنیتی را وارد کنید.');
-                answer.focus();
+        verifyForm.addEventListener('submit', async function (event) {
+            event.preventDefault();
+
+            const button = verifyForm.querySelector('button[type="submit"]');
+            button.disabled = true;
+            showMessage('');
+
+            try {
+                const response = await window.TarazinoAuthRequest.post(
+                    modal.dataset.verifyUrl,
+                    verifyForm
+                );
+
+                if (!response.ok) {
+                    showMessage(response.result.message || 'پاسخ امنیتی صحیح نیست.');
+                    return;
+                }
+
+                showStep(3);
+                showMessage('پاسخ تأیید شد. رمز عبور جدید را وارد کنید.', 'success');
+            } catch (error) {
+                showMessage(error.message || 'درخواست انجام نشد.');
+            } finally {
+                button.disabled = false;
+            }
+        });
+
+        resetForm.addEventListener('submit', async function (event) {
+            event.preventDefault();
+
+            const button = resetForm.querySelector('button[type="submit"]');
+            const password = document.getElementById('recoveryNewPassword').value;
+            const confirmation = document.getElementById('recoveryConfirmPassword').value;
+
+            document.getElementById('recovery_password_err').textContent = '';
+            document.getElementById('recovery_confirm_err').textContent = '';
+
+            if (password !== confirmation) {
+                document.getElementById('recovery_confirm_err').textContent =
+                    'تکرار رمز عبور مطابقت ندارد.';
                 return;
             }
-            const { ok, result } = await window.TarazinoAuthRequest.post(modal.dataset.verifyUrl, forms[1]);
-            if (!ok) return message(result.message || 'پاسخ تأیید نشد.');
-            if (typeof result.nonce !== 'string' || !result.nonce) {
-                throw new Error('مجوز بازیابی از سرور دریافت نشد.');
+
+            button.disabled = true;
+            showMessage('');
+
+            try {
+                const response = await window.TarazinoAuthRequest.post(
+                    modal.dataset.resetUrl,
+                    resetForm
+                );
+
+                if (!response.ok) {
+                    const errors = response.result.errors || {};
+
+                    document.getElementById('recovery_password_err').textContent =
+                        errors.recovery_password_err || '';
+                    document.getElementById('recovery_confirm_err').textContent =
+                        errors.recovery_confirm_err || '';
+
+                    showMessage(response.result.message || 'تغییر رمز عبور انجام نشد.');
+                    return;
+                }
+
+                resetForms();
+                showMessage('رمز عبور تغییر کرد. اکنون با رمز جدید وارد شوید.', 'success');
+            } catch (error) {
+                showMessage(error.message || 'درخواست انجام نشد.');
+            } finally {
+                button.disabled = false;
             }
-            $('recoveryNonce').value = result.nonce;
-            $('recoveryResetUsername').value = $('recoveryUsername').value.trim();
-            answer.value = '';
-            showStep(2);
-            message('پاسخ تأیید شد. رمز عبور جدید را تعیین کنید.', 'success');
         });
 
-        submit(forms[2], async () => {
-            clearPasswordErrors();
-            const password = $('recoveryNewPassword').value;
-            const confirmation = $('recoveryConfirmPassword').value;
-            if (!password || password !== confirmation) {
-                $('recovery_confirm_err').textContent = 'رمز جدید و تکرار آن باید یکسان باشند.';
-                return;
+        startOver.addEventListener('click', resetForms);
+        modal.addEventListener('hidden.bs.modal', resetForms);
+
+        modal.addEventListener('show.bs.modal', function () {
+            resetForms();
+
+            const loginUsername = document.getElementById('username');
+
+            if (loginUsername && loginUsername.value.trim()) {
+                document.getElementById('recoveryUsername').value = loginUsername.value.trim();
             }
-            const { ok, result } = await window.TarazinoAuthRequest.post(modal.dataset.resetUrl, forms[2]);
-            if (!ok) {
-                const errors = result.errors && typeof result.errors === 'object' ? result.errors : {};
-                ['recovery_password_err', 'recovery_confirm_err'].forEach(id => {
-                    if (typeof errors[id] === 'string') $(id).textContent = errors[id];
-                });
-                return message(result.message || 'ذخیره رمز جدید انجام نشد.');
-            }
-            reset();
-            message('رمز عبور تغییر کرد. پنجره را ببندید و با رمز جدید وارد شوید.', 'success');
         });
 
-        showStep(0);
-    }
-
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', start, { once: true });
-    } else start();
+        showStep(1);
+    });
 })(window, document);

@@ -19,16 +19,10 @@ class Profile_api extends BaseApiController
 
     public function get()
     {
-        $data = $this->profile_service->get(
-            (int) $this->current_user_id()
-        );
+        $data = $this->profile_service->get($this->current_user_id());
 
         if (!$data) {
-            return $this->respond_json(
-                false,
-                'پروفایل پیدا نشد.',
-                404
-            );
+            return $this->respond_json(false,'پروفایل پیدا نشد.',404);
         }
 
         return $this->respond_json(true, '', 200, $data);
@@ -36,41 +30,29 @@ class Profile_api extends BaseApiController
 
     public function update()
     {
-        $result = $this->profile_service->update(
-            (int) $this->current_user_id(),
-            $this->input->post(NULL, false),
-            $_FILES
-        );
+        $result = $this->profile_service->update($this->current_user_id(),$this->input->post(),$_FILES);
 
         $status = $result['status'] ?? 200;
-        $success = !empty($result['success']);
+        $success = $result['success'] ?? false;
         $message = $result['message'] ?? '';
 
-        unset($result['status']);
-        unset($result['success'], $result['message']);
+        unset($result['status'], $result['success'], $result['message']);
 
         return $this->respond_json($success, $message, $status, $result);
     }
 
     public function delete_account()
     {
-        if ((string) $this->input->post('confirm_deletion') !== '1') {
-            return $this->respond_json(
-                false,
-                'برای حذف حساب، تأیید نهایی را علامت بزنید.',
-                422
-            );
+        if ($this->input->post('confirm_deletion') !== '1') {
+            return $this->respond_json(false,'برای حذف حساب، تأیید نهایی را علامت بزنید.',422);
         }
 
         $password = $this->input->post('current_password', false);
 
-        $result = $this->account_deletion_service->delete_account(
-            (int) $this->current_user_id(),
-            $password
-        );
+        $result = $this->account_deletion_service->delete_account($this->current_user_id(),$password);
 
         $status = $result['status'] ?? 500;
-        $success = !empty($result['success']);
+        $success = $result['success'] ?? false;
         $message = $result['message'] ?? '';
 
         if (!$success) {

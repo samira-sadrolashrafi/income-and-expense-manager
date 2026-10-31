@@ -1,109 +1,135 @@
-
-/** TARAZINO | Profile presentation: avatar preview, theme, password visibility. */
-(function (w, d) {
+/** TARAZINO | Profile page UI helpers. */
+(function (window, document) {
     'use strict';
-    const $ = id => d.getElementById(id);
+
+    const byId = id => document.getElementById(id);
 
     function initialize() {
-        if (!$('profileMain')) return null;
-        const input = $('profileAvatarInput');
-        const image = $('profileAvatarImage');
-        const fallback = $('profileAvatarFallback');
-        const error = $('profileAvatarError');
-        const notice = $('profileAvatarPreviewNotice');
-        let objectUrl = null;
-        let removed = false;
+        if (!byId('profileMain')) return null;
 
-        function avatarMessage(text, invalid = false) {
-            const box = invalid ? error : notice;
-            const other = invalid ? notice : error;
-            other.classList.add('d-none');
-            box.textContent = text;
-            box.classList.toggle('d-none', !text);
+        const input = byId('profileAvatarInput');
+        const image = byId('profileAvatarImage');
+        const fallback = byId('profileAvatarFallback');
+        const removeButton = byId('profileRemoveAvatar');
+        const errorBox = byId('profileAvatarError');
+        const noticeBox = byId('profileAvatarPreviewNotice');
+
+        if (!input || !image || !fallback || !removeButton || !errorBox || !noticeBox) {
+            return null;
         }
 
-        function preview(url) {
+        let previewUrl = null;
+        let removed = false;
+
+        function showAvatarMessage(message, isError) {
+            const target = isError ? errorBox : noticeBox;
+            const other = isError ? noticeBox : errorBox;
+
+            other.classList.add('d-none');
+            target.textContent = message || '';
+            target.classList.toggle('d-none', !message);
+        }
+
+        function showAvatar(url) {
             const hasImage = Boolean(url);
+
             image.classList.toggle('d-none', !hasImage);
             fallback.classList.toggle('d-none', hasImage);
-            if (hasImage) image.src = url;
-            else image.removeAttribute('src');
+
+            if (hasImage) {
+                image.src = url;
+            } else {
+                image.removeAttribute('src');
+            }
         }
 
         function releasePreview() {
-            if (objectUrl) w.URL.revokeObjectURL(objectUrl);
-            objectUrl = null;
+            if (previewUrl) {
+                window.URL.revokeObjectURL(previewUrl);
+                previewUrl = null;
+            }
         }
 
         function selectedFile() {
             return input.files && input.files.length ? input.files[0] : null;
         }
 
-        function validAvatar(file) {
+        function validateAvatar(file) {
             if (!file) return '';
+
             if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
                 return 'فرمت عکس باید JPG، PNG یا WebP باشد.';
             }
+
             if (file.size < 1 || file.size > 2 * 1024 * 1024) {
                 return 'حجم عکس باید بیشتر از صفر و حداکثر ۲ مگابایت باشد.';
             }
+
             return '';
         }
 
-        input.addEventListener('change', () => {
+        input.addEventListener('change', function () {
             const file = selectedFile();
-            const problem = validAvatar(file);
-            if (problem) {
+            const error = validateAvatar(file);
+
+            if (error) {
                 input.value = '';
-                avatarMessage(problem, true);
+                showAvatarMessage(error, true);
                 return;
             }
+
             if (!file) return;
+
             releasePreview();
-            objectUrl = w.URL.createObjectURL(file);
+            previewUrl = window.URL.createObjectURL(file);
             removed = false;
-            preview(objectUrl);
-            avatarMessage('پیش‌نمایش عکس آماده است؛ برای ثبت روی «ذخیره تغییرات» بزنید.');
+            showAvatar(previewUrl);
+            showAvatarMessage('پیش‌نمایش عکس آماده است؛ برای ثبت روی «ذخیره تغییرات» بزنید.', false);
         });
 
-        $('profileRemoveAvatar').addEventListener('click', () => {
+        removeButton.addEventListener('click', function () {
             input.value = '';
             releasePreview();
             removed = true;
-            preview('');
-            avatarMessage('حذف عکس انتخاب شد؛ هنوز روی سرور ذخیره نشده است.');
+            showAvatar('');
+            showAvatarMessage('حذف عکس انتخاب شد؛ هنوز روی سرور ذخیره نشده است.', false);
         });
 
-        d.querySelectorAll('[data-profile-password-toggle]').forEach(button => {
-            button.addEventListener('click', () => {
-                const field = $(button.dataset.profilePasswordToggle);
+        document.querySelectorAll('[data-profile-password-toggle]').forEach(function (button) {
+            button.addEventListener('click', function () {
+                const field = byId(button.dataset.profilePasswordToggle);
                 if (!field) return;
-                const showing = field.type === 'text';
-                field.type = showing ? 'password' : 'text';
-                button.setAttribute('aria-pressed', String(!showing));
-                button.setAttribute('aria-label', showing ? 'نمایش رمز عبور' : 'پنهان کردن رمز عبور');
-                const icon = button.querySelector('i');
-                if (icon) {
-                    icon.classList.toggle('fa-eye', showing);
-                    icon.classList.toggle('fa-eye-slash', !showing);
-                }
+
+                const showPassword = field.type === 'password';
+                field.type = showPassword ? 'text' : 'password';
+                button.textContent = showPassword ? 'پنهان کردن' : 'نمایش';
+                button.setAttribute('aria-pressed', String(showPassword));
+                button.setAttribute('aria-label', showPassword ? 'پنهان کردن رمز عبور' : 'نمایش رمز عبور');
             });
         });
 
-        w.addEventListener('pagehide', releasePreview);
+        window.addEventListener('pagehide', releasePreview);
+
         return Object.freeze({
-            getAvatar: () => ({ file: selectedFile(), removed }),
-            validateAvatar: validAvatar,
-            saved: avatarUrl => {
+            getAvatar: function () {
+                return {
+                    file: selectedFile(),
+                    removed: removed
+                };
+            },
+            validateAvatar: validateAvatar,
+            saved: function (avatarUrl) {
                 removed = false;
                 input.value = '';
-                avatarMessage('');
+                releasePreview();
+                showAvatarMessage('', false);
+
                 if (typeof avatarUrl === 'string') {
-                    releasePreview();
-                    preview(avatarUrl);
+                    showAvatar(avatarUrl);
                 }
             }
         });
     }
-    w.TarazinoProfileUI = Object.freeze({ initialize });
+
+    window.TarazinoProfileUI = Object.freeze({ initialize: initialize });
 })(window, document);

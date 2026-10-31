@@ -8,7 +8,10 @@
         <div class="row g-0">
             <?php $this->load->view('layouts/app_sidebar', array('active_page' => 'profile')); ?>
 
-            <main class="col-lg-9 col-xl-10 dashboard-main" id="profileMain">
+            <main class="col-lg-9 col-xl-10 dashboard-main" id="profileMain"
+                  data-profile-api-url="<?= html_escape(site_url('api/profile')) ?>"
+                  data-delete-account-api-url="<?= html_escape(site_url('api/profile/delete-account')) ?>"
+                  data-login-url="<?= html_escape(site_url('login')) ?>">
                 <?php $this->load->view('layouts/app_header', array(
                     'app_page_title' => 'پروفایل',
                     'app_page_description' => 'اطلاعات حساب خود را مدیریت کنید.',
@@ -99,7 +102,8 @@
                                         <div class="input-group">
                                             <input id="profileCurrentPassword" name="current_password" class="form-control"
                                                    type="password">
-                                            <button type="button" class="btn btn-outline-secondary">نمایش</button>
+                                            <button type="button" class="btn btn-outline-secondary"
+                                                    data-profile-password-toggle="profileCurrentPassword">نمایش</button>
                                         </div>
                                     </div>
 
@@ -108,7 +112,8 @@
                                         <div class="input-group">
                                             <input id="profileNewPassword" name="new_password" class="form-control"
                                                    type="password">
-                                            <button type="button" class="btn btn-outline-secondary">نمایش</button>
+                                            <button type="button" class="btn btn-outline-secondary"
+                                                    data-profile-password-toggle="profileNewPassword">نمایش</button>
                                         </div>
                                     </div>
 
@@ -117,7 +122,8 @@
                                         <div class="input-group">
                                             <input id="profileConfirmPassword" name="confirm_password" class="form-control"
                                                    type="password">
-                                            <button type="button" class="btn btn-outline-secondary">نمایش</button>
+                                            <button type="button" class="btn btn-outline-secondary"
+                                                    data-profile-password-toggle="profileConfirmPassword">نمایش</button>
                                         </div>
                                     </div>
                                 </div>
@@ -125,7 +131,7 @@
                             </div>
                         </section>
 
-                        <button id="profileSaveButton" type="button" class="btn btn-primary w-100 btn-lg">ذخیره تغییرات</button>
+                        <button id="profileSaveButton" type="submit" class="btn btn-primary w-100 btn-lg">ذخیره تغییرات</button>
                         <div id="profileMessage" class="alert alert-danger mt-3 d-none" role="alert"></div>
                     </form>
 
@@ -181,15 +187,17 @@
                         <label for="deleteAccountPassword" class="form-label">رمز عبور فعلی</label>
                         <input id="deleteAccountPassword" name="current_password" type="password"
                                class="form-control" required>
+                        <div id="deleteAccountPasswordFeedback"
+                             class="invalid-feedback d-none"></div>
                         <div class="form-check mt-3">
-                            <input id="deleteAccountConfirmation" name="confirm_deletion" class="form-check-input" type="checkbox" required>
+                            <input id="deleteAccountConfirmation" name="confirm_deletion" value="1" class="form-check-input" type="checkbox" required>
                             <label for="deleteAccountConfirmation" class="form-check-label">حذف حسابم را تأیید می‌کنم.</label>
                         </div>
                         <div id="deleteAccountMessage" class="alert alert-danger mt-3 d-none" role="alert"></div>
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">انصراف</button>
-                        <button type="button" id="deleteAccountSubmitButton" class="btn btn-danger">
+                        <button type="submit" id="deleteAccountSubmitButton" class="btn btn-danger">
                             تأیید و حذف حساب
                         </button>
                     </div>
@@ -201,4 +209,11 @@
 
 <?php $this->load->view('layouts/logout_modal'); ?>
 
-<?php $this->load->view('layouts/footer'); ?>
+<?php $this->load->view('layouts/footer', array(
+    'page_scripts' => array(
+        base_url('assets/js/api.js'),
+        base_url('assets/js/profile-ui.js'),
+        base_url('assets/js/profile.js'),
+        base_url('assets/js/profile-delete-account.js')
+    )
+)); ?>

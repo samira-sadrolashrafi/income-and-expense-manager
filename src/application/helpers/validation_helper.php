@@ -128,7 +128,7 @@ function validateProfileUpdate($request, $questions)
         $question = $security['question_id'];
         $answer = $security['recovery_answer'];
         if (!is_string($question) || !ctype_digit($question)
-            || !is_array($questions) || !isset($questions[(int) $question])
+            || !is_array($questions) || !isset($questions[$question])
             || !is_string($answer) || strlen(trim($answer)) < 6 || strlen($answer) > 256) {
             return profileValidationError('سؤال یا پاسخ بازیابی معتبر نیست.');
         }

@@ -25,20 +25,13 @@ class Dashboard_api extends BaseApiController
             return $this->respond_json(false, 'موجودی یافت نشد.', 404);
         }
 
-        return $this->respond_json(
-            true,
-            'موجودی دریافت شد.',
-            200,
-            array('balance' => $balance->balance)
-        );
+        return $this->respond_json(true, 'موجودی دریافت شد.', 200, array('balance' => $balance->balance));
     }
 
     public function update_balance()
     {
         $balance = $this->input->post('balance');
 
-        // پیام دقیق مرتبط با مبلغ (فرمت صرف، صفر یا اندازه بیش از حد)
-        // پیش از فراخوانی سرویس بررسی می‌شود.
         $amount_error = $this->balance_service->amount_error($balance, true);
 
         if ($amount_error !== null) {
@@ -60,55 +53,41 @@ class Dashboard_api extends BaseApiController
 
         return $this->respond_json(true, 'موجودی با موفقیت صفر شد.');
     }
-
-    /**
-     * Return the income, expense, and historical balance
-     * series required by the dashboard chart.
-     */
     
+
     public function cashflow()
     {
         $from = $this->input->get('from', true);
         $to = $this->input->get('to', true);
 
-        // A report is either unbounded or has a complete inclusive ISO range.
         if ($from !== null || $to !== null) {
-            if (
-                !$this->is_valid_report_date($from) ||
-                !$this->is_valid_report_date($to) ||
-                $from > $to
-            ) {
+            if (!$this->is_valid_report_date($from) || !$this->is_valid_report_date($to) || $from > $to) {
                 return $this->respond_json(false, 'بازه گزارش معتبر نیست.', 422);
             }
         }
 
-        $report = $this->Dashboard_report_model
-            ->get_cashflow_report($this->user_id, $from, $to);
+        $report = $this->Dashboard_report_model->get_cashflow_report($this->user_id, $from, $to);
 
         if ($report === false) {
             return $this->respond_json(false, 'دریافت گزارش نمودار ناموفق بود.', 500);
         }
 
-        return $this->respond_json(
-            true,
-            'گزارش نمودار دریافت شد.',
-            200,
-            $report
-        );
+        return $this->respond_json(true, 'گزارش نمودار دریافت شد.', 200, $report);
     }
 
     private function is_valid_report_date($value)
     {
-        if (
-            !is_string($value) ||
-            !preg_match('/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/', $value)
-        ) {
+        if (!is_string($value) || !preg_match('/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/', $value)) {
             return false;
         }
 
-        $date = DateTimeImmutable::createFromFormat('!Y-m-d', $value);
+        $date = explode('-', $value);
 
-        return $date !== false && $date->format('Y-m-d') === $value;
+        return checkdate(
+            (int) $date[1],
+            (int) $date[2],
+            (int) $date[0]
+        );
     }
 
 }

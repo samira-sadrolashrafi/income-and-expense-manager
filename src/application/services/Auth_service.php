@@ -39,7 +39,7 @@ class Auth_service
         ));
 
         if (!$user_id || !$this->balance_service->create_initial_balance($user_id)
-            || !$this->CI->Recovery_model->save_for_user($user_id, $data['question_id'], $data['security_answer'])
+            || !$this->CI->Recovery_model->save_user_recovery($user_id, $data['question_id'], $data['security_answer'])
             || $db->trans_status() === false) {
             $db->trans_rollback();
             return false;
@@ -93,8 +93,7 @@ class Auth_service
 
         $user = $this->CI->User_model->find_by_username(trim($username));
 
-        if (!$user || $user->deleted_at === null
-            || !password_verify($password, $user->password)) {
+        if (!$user || $user->deleted_at === null || !password_verify($password, $user->password)) {
             return false;
         }
 
@@ -107,27 +106,16 @@ class Auth_service
         $db = $this->CI->db;
         $db->trans_begin();
 
-        $restored = $this->CI->User_model->restore_account(
-            (int) $user->id,
-            date('Y-m-d H:i:s')
-        );
+        $restored = $this->CI->User_model->restore_account($user->id, date('Y-m-d H:i:s'));
 
         if (!$restored) {
             $db->trans_rollback();
             return false;
         }
 
-        $user = $this->CI->User_model->find_active_by_id((int) $user->id);
+        $user = $this->CI->User_model->find_active_by_id($user->id);
 
-        if (!$user || !$this->complete_login($user, $remember) || $db->trans_status() === false) {
-            $db->trans_rollback();
-            $this->CI->load->library('session');
-            $this->CI->session->sess_destroy();
-            clearRememberCookie();
-            return false;
-        }
-
-        if (!$db->trans_commit()) {
+        if (!$user || !$this->complete_login($user, $remember) || $db->trans_status() === false || !$db->trans_commit()) {
             $db->trans_rollback();
             $this->CI->load->library('session');
             $this->CI->session->sess_destroy();
@@ -157,11 +145,7 @@ class Auth_service
             $token = bin2hex(random_bytes(32));
             $expires = time() + 30 * 86400;
 
-            if (!$this->CI->User_model->update_remember_token(
-                $user->id,
-                hash('sha256', $token),
-                date('Y-m-d H:i:s', $expires)
-            )) {
+            if (!$this->CI->User_model->update_remember_token($user->id,hash('sha256', $token),date('Y-m-d H:i:s', $expires))) {
                 return false;
             }
 
@@ -184,8 +168,7 @@ class Auth_service
         $this->CI->session->sess_regenerate(true);
 
         $this->CI->session->set_userdata(array(
-            'user_id' => (int) $user->id,
-
+            'user_id' => $user->id,
             'username' => $user->username,
             'avatar' => $user->avatar,
             'logged_in' => true
@@ -196,44 +179,33 @@ class Auth_service
 
     public function logout()
     {
-        $user_id = null;
+        $this->CI->load->library('session');
 
-        $session_cookie = $this->CI->config->item('sess_cookie_name');
+        $user_id = $this->CI->session->userdata('user_id');
 
-        if (session_status() === PHP_SESSION_ACTIVE || isset($_COOKIE[$session_cookie])) {
+        if (!$user_id && isset($_COOKIE['remember_token'])) {
 
-            $this->CI->load->library('session');
-
-            $user_id = $this->CI->session->userdata('user_id');
-        }
-
-        if (!$user_id) {
-            $token = $_COOKIE['remember_token'] ?? null;
+            $token = $_COOKIE['remember_token'];
 
             if (is_string($token) && preg_match('/\A[a-f0-9]{64}\z/', $token)) {
 
-                $user = $this->CI->User_model->find_by_remember_token(
-                    hash('sha256', $token)
-                );
+                $user = $this->CI->User_model->find_by_remember_token(hash('sha256', $token));
 
                 if ($user) {
                     $user_id = $user->id;
+                } else {
+                    $user_id = null;
                 }
             }
         }
 
-        $cleared = true;
-
-        if ($user_id) {
-            $cleared = $this->CI->User_model->clear_remember_token($user_id);
-        }
-
         clearRememberCookie();
+        $this->CI->session->sess_destroy();
 
-        if (session_status() === PHP_SESSION_ACTIVE) {
-            $this->CI->session->sess_destroy();
+        if (!$user_id) {
+            return true;
         }
 
-        return $cleared;
+        return $this->CI->User_model->clear_remember_token($user_id);
     }
 }

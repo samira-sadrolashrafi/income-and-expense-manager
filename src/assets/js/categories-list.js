@@ -1,3 +1,4 @@
+
 /** TARAZINO | Category tables and server-side pagination. */
 (function (w, d) {
     'use strict';
@@ -94,7 +95,7 @@
             const currentPage = pagination.current_page;
             const totalPages = pagination.total_pages;
             const total = pagination.total;
-            const perPage = pagination.per_page;
+            const perPage = s.perPage;
 
             $(prefix).classList.toggle('d-none', totalPages <= 1);
 
