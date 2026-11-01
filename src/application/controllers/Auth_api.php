@@ -26,7 +26,9 @@ class Auth_api extends BaseApiController
 
     public function login()
     {
-        $result = $this->auth_service->login($this->input->post());
+        $payload = json_decode(file_get_contents('php://input'));
+        
+        $result = $this->auth_service->login($payload);
 
         return $this->send_result($result);
     }
