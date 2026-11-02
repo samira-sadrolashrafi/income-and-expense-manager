@@ -5,7 +5,7 @@ $this->load->view('layouts/header', array(
 ));
 ?>
 
-<main class="container-fluid min-vh-100 bg-body-tertiary py-4 py-lg-5" id="registerApp">
+<main class="container-fluid min-vh-100 bg-body-tertiary py-4 py-lg-5" id="registerPage">
     <div class="container">
         <div class="row justify-content-center">
             <div class="col-12 col-lg-11 col-xl-10">
@@ -250,7 +250,7 @@ $this->load->view('layouts/header', array(
                 }
             }
         }
-    }).mount('#registerApp')
+    }).mount('#registerPage')
 
 </script>
 
