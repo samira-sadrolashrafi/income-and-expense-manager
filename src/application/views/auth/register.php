@@ -1,12 +1,11 @@
 <?php
-
 $this->load->view('layouts/header', array(
     'page_title' => 'ایجاد حساب کاربری',
     'page_styles' => array(base_url('assets/css/dashboard.css'))
 ));
 ?>
 
-<main class="container-fluid min-vh-100 bg-body-tertiary py-4 py-lg-5" id="registerPage" data-component="register-page">
+<main class="container-fluid min-vh-100 bg-body-tertiary py-4 py-lg-5" id="registerApp">
     <div class="container">
         <div class="row justify-content-center">
             <div class="col-12 col-lg-11 col-xl-10">
@@ -45,28 +44,24 @@ $this->load->view('layouts/header', array(
                                 <h1 class="h3 fw-bold mb-2" id="registerPageTitle">ایجاد حساب کاربری</h1>
                                 <p class="text-body-secondary mb-4">اطلاعاتت رو وارد کن تا حساب مالی شخصی خودت رو بسازی.</p>
 
-                                <div id="registerMessage" class="alert d-none" role="alert"
-                                     aria-live="polite" aria-atomic="true"></div>
+                                <div v-if="message" id="registerMessage" class="alert alert-danger" role="alert"
+                                     aria-live="polite" aria-atomic="true">{{ message }}</div>
 
-                                <form id="registerForm"
-                                      action="<?php echo html_escape(site_url('auth/register')); ?>"
-                                      method="post"
-                                      data-success-url="<?php echo html_escape(site_url('login')); ?>"
-                                      novalidate>
+                                <form id="registerForm" @submit.prevent="register" novalidate>
                                     <div class="row g-3">
                                         <div class="col-12 col-sm-6">
                                             <label class="form-label fw-medium" for="first_name">نام</label>
                                             <input class="form-control" type="text" id="first_name" name="first_name"
                                                    placeholder="نام" autocomplete="given-name" maxlength="100"
-                                                   aria-describedby="first_name_err" required>
-                                            <div class="text-danger small mt-1" id="first_name_err" aria-live="polite"></div>
+                                                   aria-describedby="first_name_err" required v-model="firstName">
+                                            <div class="text-danger small mt-1" id="first_name_err" aria-live="polite">{{ errors.first_name_err }}</div>
                                         </div>
                                         <div class="col-12 col-sm-6">
                                             <label class="form-label fw-medium" for="last_name">نام خانوادگی</label>
                                             <input class="form-control" type="text" id="last_name" name="last_name"
                                                    placeholder="نام خانوادگی" autocomplete="family-name" maxlength="100"
-                                                   aria-describedby="last_name_err" required>
-                                            <div class="text-danger small mt-1" id="last_name_err" aria-live="polite"></div>
+                                                   aria-describedby="last_name_err" required v-model="lastName">
+                                            <div class="text-danger small mt-1" id="last_name_err" aria-live="polite">{{ errors.last_name_err }}</div>
                                         </div>
 
                                         <div class="col-12 col-sm-6">
@@ -76,10 +71,10 @@ $this->load->view('layouts/header', array(
                                                 <input class="form-control" type="text" id="username" name="username"
                                                        placeholder="مثلاً: my_account" autocomplete="username"
                                                        dir="ltr" maxlength="100" minlength="3"
-                                                       aria-describedby="usernameHelp username_err" required>
+                                                       aria-describedby="usernameHelp username_err" required v-model="username">
                                             </div>
                                             <div id="usernameHelp" class="form-text">حداقل ۳ کاراکتر انگلیسی، عدد یا زیرخط (_). نام کاربری باید یکتا باشه.</div>
-                                            <div class="text-danger small mt-1" id="username_err" aria-live="polite"></div>
+                                            <div class="text-danger small mt-1" id="username_err" aria-live="polite">{{ errors.username_err }}</div>
                                         </div>
                                         <div class="col-12 col-sm-6">
                                             <label class="form-label fw-medium" for="email">ایمیل</label>
@@ -87,9 +82,9 @@ $this->load->view('layouts/header', array(
                                                 <span class="input-group-text" aria-hidden="true"><i class="fa-solid fa-envelope"></i></span>
                                                 <input class="form-control" type="email" id="email" name="email"
                                                        placeholder="you@example.com" autocomplete="email"
-                                                       dir="ltr" aria-describedby="email_err" required>
+                                                       dir="ltr" aria-describedby="email_err" required v-model="email">
                                             </div>
-                                            <div class="text-danger small mt-1" id="email_err" aria-live="polite"></div>
+                                            <div class="text-danger small mt-1" id="email_err" aria-live="polite">{{ errors.email_err }}</div>
                                         </div>
 
                                         <div class="col-12 col-sm-6">
@@ -98,9 +93,9 @@ $this->load->view('layouts/header', array(
                                                 <span class="input-group-text" aria-hidden="true"><i class="fa-solid fa-lock"></i></span>
                                                 <input class="form-control" type="password" id="password" name="password"
                                                        placeholder="رمز عبور" autocomplete="new-password" dir="ltr"
-                                                       minlength="8" aria-describedby="passwordHelp password_err" required>
+                                                       minlength="8" aria-describedby="passwordHelp password_err" required v-model="password">
                                             </div>
-                                            <div class="text-danger small mt-1" id="password_err" aria-live="polite"></div>
+                                            <div class="text-danger small mt-1" id="password_err" aria-live="polite">{{ errors.password_err }}</div>
                                         </div>
                                         <div class="col-12 col-sm-6">
                                             <label class="form-label fw-medium" for="password_confirm">تکرار رمز عبور</label>
@@ -109,9 +104,9 @@ $this->load->view('layouts/header', array(
                                                 <input class="form-control" type="password" id="password_confirm"
                                                        name="password_confirm" placeholder="تکرار رمز عبور"
                                                        autocomplete="new-password" dir="ltr"
-                                                       aria-describedby="confirm_password_err" required>
+                                                       aria-describedby="confirm_password_err" required v-model="passwordConfirm">
                                             </div>
-                                            <div class="text-danger small mt-1" id="confirm_password_err" aria-live="polite"></div>
+                                            <div class="text-danger small mt-1" id="confirm_password_err" aria-live="polite">{{ errors.confirm_password_err }}</div>
                                         </div>
                                         <div class="col-12">
                                             <div class="form-text mt-0" id="passwordHelp">
@@ -132,7 +127,7 @@ $this->load->view('layouts/header', array(
                                         <div class="mb-3">
                                             <label class="form-label fw-medium" for="question_id">سؤال امنیتی</label>
                                             <select class="form-select" id="question_id" name="question_id"
-                                                    aria-describedby="question_id_err" required>
+                                                    aria-describedby="question_id_err" required v-model="questionId">
                                                 <option value="">یک سؤال انتخاب کن</option>
                                                 <?php foreach ($questions as $question_id => $question_label): ?>
                                                     <option value="<?php echo (int) $question_id; ?>">
@@ -140,7 +135,7 @@ $this->load->view('layouts/header', array(
                                                     </option>
                                                 <?php endforeach; ?>
                                             </select>
-                                            <div class="text-danger small mt-1" id="question_id_err" aria-live="polite"></div>
+                                            <div class="text-danger small mt-1" id="question_id_err" aria-live="polite">{{ errors.question_id_err }}</div>
                                         </div>
 
                                         <div class="mb-4">
@@ -150,16 +145,15 @@ $this->load->view('layouts/header', array(
                                                 <input class="form-control" type="password" id="security_answer"
                                                        name="security_answer" placeholder="پاسخی که خودت به خاطر می‌سپری"
                                                        autocomplete="off" minlength="6" maxlength="256"
-                                                       aria-describedby="securityAnswerHelp security_answer_err" required>
+                                                       aria-describedby="securityAnswerHelp security_answer_err" required v-model="securityAnswer">
                                             </div>
-                                            <div class="text-danger small mt-1" id="security_answer_err" aria-live="polite"></div>
+                                            <div class="text-danger small mt-1" id="security_answer_err" aria-live="polite">{{ errors.security_answer_err }}</div>
                                             <div id="securityAnswerHelp" class="form-text">
                                                 پاسخ باید دست‌کم ۶ کاراکتر باشه. برای امنیت بیشتر از پاسخ قابل‌حدس استفاده نکن.
                                             </div>
                                         </div>
                                     </div>
 
-                                    <!-- auth.js replaces textContent while submitting; keep plain text. -->
                                     <button type="submit" class="btn btn-primary w-100 py-2 fw-semibold">ایجاد حساب کاربری</button>
                                 </form>
 
@@ -205,11 +199,59 @@ $this->load->view('layouts/header', array(
     </div>
 </main>
 
-<?php
-$this->load->view('layouts/footer', array(
-    'page_scripts' => array(
-        base_url('assets/js/auth-request.js'),
-        base_url('assets/js/auth.js')
-    )
-));
-?>
+<script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+
+<script>
+    Vue.createApp({
+        data(){
+            return{
+                firstName: '',
+                lastName: '',
+                username: '',
+                email: '',
+                password: '',
+                passwordConfirm: '',
+                questionId: '',
+                securityAnswer: '',
+                message: '',
+                errors: {}                                        
+            }
+        },
+        methods: {
+            async register(){
+                this.message = '';
+                this.errors = {};
+
+                try{
+                    const response = await fetch('/auth/register', {
+                        method: 'POST',
+                        body: JSON.stringify({
+                            first_name: this.firstName,
+                            last_name: this.lastName,
+                            username: this.username,
+                            email: this.email,
+                            password: this.password,
+                            password_confirm: this.passwordConfirm,
+                            question_id: this.questionId,
+                            security_answer: this.securityAnswer
+                        })
+                    });
+
+                    const result = await response.json();
+
+                    if(result.success){
+                        window.location.href= '/login';
+                    }else{
+                        this.message = result.message;
+                        this.errors = result.errors || {};
+                    }
+                }catch (error){
+                    this.message = "ارتباط با سرور برقرار نشد، دوباره تلاش کنید. "
+                }
+            }
+        }
+    }).mount('#registerApp')
+
+</script>
+
+<?php $this->load->view('layouts/footer'); ?>

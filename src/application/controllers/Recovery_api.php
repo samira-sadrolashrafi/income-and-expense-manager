@@ -17,28 +17,29 @@ class Recovery_api extends BaseApiController
 
     public function question()
     {
-        $result = $this->recovery_service->question(
-            $this->input->post('username')
-        );
+        $payload = json_decode(file_get_contents('php://input'), true);
+
+        $result = $this->recovery_service->question($payload['username'] ?? null);
 
         return $this->send_result($result);
     }
 
     public function verify()
     {
-        $result = $this->recovery_service->verify(
-            $this->input->post('username'),
-            $this->input->post('answer')
-        );
+        $payload = json_decode(file_get_contents('php://input'), true);
+
+        $result = $this->recovery_service->verify($payload['answer'] ?? null);
 
         return $this->send_result($result);
     }
 
     public function reset()
     {
+        $payload = json_decode(file_get_contents('php://input'), true);
+
         $result = $this->recovery_service->reset(
-            $this->input->post('password'),
-            $this->input->post('password_confirm')
+            $payload['password'] ?? null,
+            $payload['password_confirm'] ?? null
         );
 
         return $this->send_result($result);

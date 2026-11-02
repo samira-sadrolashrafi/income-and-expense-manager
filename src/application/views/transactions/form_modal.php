@@ -1,6 +1,3 @@
-
-<?php defined('BASEPATH') OR exit('No direct script access allowed'); ?>
-
 <div class="modal fade tz-modal" data-component="transaction-form-modal"
      id="<?= html_escape($form_prefix) ?>Modal" tabindex="-1"
      aria-labelledby="<?= html_escape($form_prefix) ?>ModalTitle" aria-hidden="true">

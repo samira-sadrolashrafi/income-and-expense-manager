@@ -162,7 +162,6 @@ $this->load->view('layouts/header', array(
     </main>
 </div>
 
-<?php $this->load->view('auth/recovery_modal'); ?>
 
 <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
 
@@ -176,7 +175,7 @@ $this->load->view('layouts/header', array(
                 message: '',
                 errors: {},
                 showRestore: false,
-                restoreMessage: ''
+                restoreMessage: ''                    
             }
         },
         methods: {
@@ -195,7 +194,7 @@ $this->load->view('layouts/header', array(
                 try {
                     const response = await fetch('/auth/login', {
                         method: 'POST',
-                        body: JSON.stringify({ username: this.username ,password: this.password })
+                        body: JSON.stringify({ username: this.username ,password: this.password ,remember: this.remember ? '1' : '0' })
                     });
 
                     const result = await response.json();
@@ -216,16 +215,16 @@ $this->load->view('layouts/header', array(
             async restoreAccount(){
                 this.restoreMessage = '';
 
-                const formData = new FormData();
+                // const formData = new FormData();
 
-                formData.append('username',this.username);
-                formData.append('password',this.password);
-                formData.append('remember',this.remember ? '1' : '0');
+                // formData.append('username',this.username);
+                // formData.append('password',this.password);
+                // formData.append('remember',this.remember ? '1' : '0');
 
                 try{
                     const response = await fetch('/auth/account/restore',{
-                    method: 'POST',
-                    body: formData
+                        method: 'POST',
+                        body: JSON.stringify({username: this.username , password: this.password , remember: this.remember ? '1' : '0'})
                     });
 
                     const result = await response.json();
@@ -243,8 +242,7 @@ $this->load->view('layouts/header', array(
     }).mount('#loginApp');
 </script>
 
+<?php $this->load->view('auth/recovery_modal'); ?>
 
 <?php $this->load->view('layouts/footer'); ?>
 
-<script src="<?php echo base_url('assets/js/auth-request.js'); ?>"></script>
-<script src="<?php echo base_url('assets/js/recovery.js'); ?>"></script>

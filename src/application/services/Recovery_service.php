@@ -36,6 +36,13 @@ class Recovery_service
 
         $question_id = $recovery ? $recovery->question_id : 1;
 
+        if ($recovery) {
+            $this->CI->session->set_userdata('recovery_user', array(
+                'user_id' => $user->id,
+                'verified' => false
+            ));
+        }
+
         return array(
             'success' => true,
             'message' => 'لطفاً به سؤال امنیتی پاسخ دهید.',
@@ -44,24 +51,35 @@ class Recovery_service
         );
     }
 
-    public function verify($username, $answer)
+    public function verify($answer)
     {
         //می‌خواهیم مطمئن شویم که اگر پاسخ امنیتی اشتباه بود، مجوز قبلی همچنان در Session باقی نماند.
-        $this->CI->session->unset_userdata('recovery_user_id');
+        $recovery = $this->CI->session->userdata('recovery_user');
 
-        if (!is_string($username) || trim($username) === '' || !is_string($answer) || trim($answer) === '') {
+        if (!is_array($recovery) || empty($recovery['user_id']) || !isset($recovery['verified']) || $recovery['verified'] !== false) {
             return array(
                 'success' => false,
-                'message' => 'نام کاربری و پاسخ امنیتی را وارد کنید.',
+                'message' => 'ابتدا نام کاربری را وارد کنید.',
+                'status' => 403
+            );
+        }
+
+        if (!is_string($answer) || trim($answer) === '') {
+            return array(
+                'success' => false,
+                'message' => 'پاسخ امنیتی را وارد کنید.',
                 'status' => 422
             );
         }
 
-        $user = $this->CI->User_model->find_by_username(trim($username));
+        $user_id = $recovery['user_id'];
 
-        $recovery = $user && $user->deleted_at === null ? $this->CI->Recovery_model->get_user_recovery($user->id) : null;
+        $user = $this->CI->User_model->find_active_by_id($user_id);
 
-        if (!$recovery || !password_verify(trim($answer), $recovery->answer_hash)) {
+        $user_recovery = $this->CI->Recovery_model->get_user_recovery($user_id);
+
+        if (!$user || !$user_recovery ||
+            !password_verify(trim($answer), $user_recovery->answer_hash)) {
             return array(
                 'success' => false,
                 'message' => 'پاسخ امنیتی صحیح نیست.',
@@ -70,7 +88,10 @@ class Recovery_service
         }
 
         $this->CI->session->sess_regenerate(true);
-        $this->CI->session->set_userdata('recovery_user_id', $user->id);
+
+        $recovery['verified'] = true;
+
+        $this->CI->session->set_userdata('recovery_user', $recovery);
 
         return array(
             'success' => true,
@@ -79,17 +100,19 @@ class Recovery_service
         );
     }
 
+    
     public function reset($password, $confirmation)
     {
-        $user_id = $this->CI->session->userdata('recovery_user_id');
+        $recovery = $this->CI->session->userdata('recovery_user');
 
-        if (!$user_id) {
-            return array(
+        if (!is_array($recovery) || empty($recovery['user_id']) || !isset($recovery['verified']) || $recovery['verified'] !== true) {            return array(
                 'success' => false,
                 'message' => 'ابتدا پاسخ سؤال امنیتی را تأیید کنید.',
                 'status' => 403
             );
         }
+
+        $user_id = $recovery['user_id'];
 
         if (!is_string($password) || !is_string($confirmation)) {
             return array(
@@ -127,8 +150,8 @@ class Recovery_service
             );
         }
 
-        //پایان دادن به مجوز بازیابی پس از استفاده موفق.
-        $this->CI->session->unset_userdata('recovery_user_id');
+        $this->CI->session->unset_userdata('recovery_user');
+
         clearRememberCookie();
 
         return array(
@@ -137,6 +160,7 @@ class Recovery_service
             'status' => 200
         );
     }
+
 
     public function enroll($user_id, $data)
     {
