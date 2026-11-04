@@ -6,15 +6,15 @@ $this->load->view('layouts/header', array(
 ?>
 
 <div class="container-fluid dashboard-shell px-0">
+
     <div class="row g-0">
 
         <?php $this->load->view('layouts/app_sidebar', array(
             'active_page' => 'categories'
         )); ?>
 
-        <main id="categoriesApp"
-              class="col-lg-9 col-xl-10 dashboard-main"
-              @keydown.esc="showCategoryModal = false; showDeleteCategoryModal = false">
+
+        <main id="categoriesApp" class="col-lg-9 col-xl-10 dashboard-main">
 
             <?php $this->load->view('layouts/app_header', array(
                 'app_page_title' => 'دسته‌بندی‌ها',
@@ -22,7 +22,9 @@ $this->load->view('layouts/header', array(
                 'app_username' => $username
             )); ?>
 
+
             <div class="px-3 px-xl-4 pt-4">
+
 
                 <!-- Page heading -->
                 <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
@@ -33,16 +35,18 @@ $this->load->view('layouts/header', array(
                         </h2>
 
                         <p class="text-body-secondary small mb-0">
-                            دسته‌بندی‌های درآمد و هزینه را ایجاد، ویرایش و در صورت نیاز بازیابی کنید.
+                            دسته‌بندی‌های درآمد و هزینه خود را مدیریت کنید.
                         </p>
                     </div>
+
 
                     <button type="button"
                             class="btn btn-primary d-inline-flex align-items-center gap-2"
                             @click="openAddModal"
-                            :disabled="busy">
+                            :disabled="saving || deleting || restoringId !== null">
 
                         <i class="fa-solid fa-plus" aria-hidden="true"></i>
+
                         <span>افزودن دسته‌بندی</span>
 
                     </button>
@@ -54,8 +58,7 @@ $this->load->view('layouts/header', array(
                 <div v-if="message"
                      class="alert"
                      :class="'alert-' + messageType"
-                     role="alert"
-                     aria-live="polite">
+                     role="alert">
 
                     {{ message }}
 
@@ -63,14 +66,13 @@ $this->load->view('layouts/header', array(
 
 
                 <!-- Search and filters -->
-                <section class="card dashboard-card mb-3"
-                         aria-labelledby="categoryFiltersHeading">
+                <section class="card dashboard-card mb-3">
 
                     <div class="card-body p-3 p-md-4">
 
                         <div class="mb-3">
-                            <h3 id="categoryFiltersHeading"
-                                class="h6 fw-bold mb-0">
+
+                            <h3 class="h6 fw-bold mb-0">
 
                                 <i class="fa-solid fa-filter text-primary me-2"
                                    aria-hidden="true"></i>
@@ -78,10 +80,12 @@ $this->load->view('layouts/header', array(
                                 جست‌وجو و فیلتر
 
                             </h3>
+
                         </div>
 
 
                         <div class="row g-3 align-items-end">
+
 
                             <!-- Search -->
                             <div class="col-12 col-md-6 col-xl-4">
@@ -95,10 +99,10 @@ $this->load->view('layouts/header', array(
 
                                 <div class="input-group">
 
-                                    <span class="input-group-text bg-body-tertiary"
-                                          aria-hidden="true">
+                                    <span class="input-group-text bg-body-tertiary">
 
-                                        <i class="fa-solid fa-magnifying-glass"></i>
+                                        <i class="fa-solid fa-magnifying-glass"
+                                           aria-hidden="true"></i>
 
                                     </span>
 
@@ -107,7 +111,6 @@ $this->load->view('layouts/header', array(
                                            class="form-control"
                                            placeholder="نام دسته‌بندی را وارد کنید"
                                            autocomplete="off"
-                                           aria-describedby="categoriesFiltersNote"
                                            v-model="searchInput">
 
                                 </div>
@@ -127,7 +130,6 @@ $this->load->view('layouts/header', array(
 
                                 <select id="categoriesTypeFilter"
                                         class="form-select"
-                                        aria-describedby="categoriesFiltersNote"
                                         v-model="typeInput">
 
                                     <option value="all">همه انواع</option>
@@ -151,7 +153,6 @@ $this->load->view('layouts/header', array(
 
                                 <select id="categoriesSortFilter"
                                         class="form-select"
-                                        aria-describedby="categoriesFiltersNote"
                                         v-model="sortInput">
 
                                     <option value="newest">جدیدترین</option>
@@ -170,7 +171,7 @@ $this->load->view('layouts/header', array(
                                     <button type="button"
                                             class="btn btn-primary"
                                             @click="applyFilters"
-                                            :disabled="loadingActive || busy">
+                                            :disabled="loadingActive || saving || deleting || restoringId !== null">
 
                                         <i class="fa-solid fa-filter me-1"
                                            aria-hidden="true"></i>
@@ -183,7 +184,7 @@ $this->load->view('layouts/header', array(
                                     <button type="button"
                                             class="btn btn-outline-secondary"
                                             @click="clearFilters"
-                                            :disabled="loadingActive || busy">
+                                            :disabled="loadingActive || saving || deleting || restoringId !== null">
 
                                         <i class="fa-solid fa-rotate-left me-1"
                                            aria-hidden="true"></i>
@@ -199,11 +200,9 @@ $this->load->view('layouts/header', array(
                         </div>
 
 
-                        <p id="categoriesFiltersNote"
-                           class="form-text mb-0 mt-3">
+                        <p class="form-text mb-0 mt-3">
 
                             پس از تنظیم فیلترها، روی «اعمال فیلترها» کلیک کنید.
-                            برای بازگشت به فهرست کامل، از «پاک کردن فیلترها» استفاده کنید.
 
                         </p>
 
@@ -222,7 +221,6 @@ $this->load->view('layouts/header', array(
                         <button type="button"
                                 class="btn"
                                 :class="activeTab === 'active' ? 'btn-primary' : 'btn-outline-primary'"
-                                aria-controls="activeCategoriesPanel"
                                 :aria-pressed="activeTab === 'active'"
                                 @click="showActiveCategories">
 
@@ -237,7 +235,6 @@ $this->load->view('layouts/header', array(
                         <button type="button"
                                 class="btn"
                                 :class="activeTab === 'deleted' ? 'btn-primary' : 'btn-outline-primary'"
-                                aria-controls="deletedCategoriesPanel"
                                 :aria-pressed="activeTab === 'deleted'"
                                 @click="showDeletedCategories">
 
@@ -251,9 +248,10 @@ $this->load->view('layouts/header', array(
                     </div>
 
 
-                    <span class="small text-body-secondary d-inline-flex align-items-center gap-2">
+                    <span class="small text-body-secondary">
 
-                        <i class="fa-regular fa-clock" aria-hidden="true"></i>
+                        <i class="fa-regular fa-clock me-1"
+                           aria-hidden="true"></i>
 
                         دسته‌بندی‌های حذف‌شده تا ۳۰ روز امکان بازیابی دارند.
 
@@ -263,16 +261,14 @@ $this->load->view('layouts/header', array(
 
 
                 <!-- Active categories -->
-                <div id="activeCategoriesPanel"
-                     v-show="activeTab === 'active'">
+                <div v-show="activeTab === 'active'">
 
-                    <section class="card dashboard-card mb-4"
-                             aria-labelledby="categoriesTableHeading">
+                    <section class="card dashboard-card mb-4">
+
 
                         <div class="card-header bg-body border-bottom py-3 px-3 px-md-4">
 
-                            <h3 id="categoriesTableHeading"
-                                class="h6 fw-bold mb-0">
+                            <h3 class="h6 fw-bold mb-0">
 
                                 <i class="fa-solid fa-tags text-primary me-2"
                                    aria-hidden="true"></i>
@@ -291,23 +287,30 @@ $this->load->view('layouts/header', array(
                                 <thead class="table-light">
 
                                     <tr>
+
                                         <th scope="col" class="ps-3">
                                             نام دسته‌بندی
                                         </th>
 
-                                        <th scope="col">نوع</th>
+                                        <th scope="col">
+                                            نوع
+                                        </th>
 
-                                        <th scope="col">تاریخ ایجاد</th>
+                                        <th scope="col">
+                                            تاریخ ایجاد
+                                        </th>
 
                                         <th scope="col" class="text-nowrap pe-3">
                                             عملیات
                                         </th>
+
                                     </tr>
 
                                 </thead>
 
 
                                 <tbody aria-live="polite">
+
 
                                     <tr v-if="loadingActive">
 
@@ -362,6 +365,7 @@ $this->load->view('layouts/header', array(
                                         <tr v-for="category in activeCategories"
                                             :key="category.id">
 
+
                                             <td class="ps-3">
 
                                                 <i class="fa-solid me-2"
@@ -374,21 +378,26 @@ $this->load->view('layouts/header', array(
 
 
                                             <td>
+
                                                 {{ category.type === 'income' ? 'درآمد' : 'هزینه' }}
+
                                             </td>
 
 
                                             <td class="text-nowrap">
+
                                                 {{ formatDate(category.created_at) }}
+
                                             </td>
 
 
                                             <td class="text-nowrap pe-3">
 
+
                                                 <button type="button"
                                                         class="btn btn-sm btn-outline-primary me-1"
                                                         @click="openEditModal(category)"
-                                                        :disabled="busy">
+                                                        :disabled="saving || deleting || restoringId !== null">
 
                                                     ویرایش
 
@@ -398,17 +407,19 @@ $this->load->view('layouts/header', array(
                                                 <button type="button"
                                                         class="btn btn-sm btn-outline-danger"
                                                         @click="askDelete(category)"
-                                                        :disabled="busy">
+                                                        :disabled="saving || deleting || restoringId !== null">
 
                                                     حذف
 
                                                 </button>
+
 
                                             </td>
 
                                         </tr>
 
                                     </template>
+
 
                                 </tbody>
 
@@ -423,9 +434,11 @@ $this->load->view('layouts/header', array(
 
                             <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
 
+
                                 <span class="small text-body-secondary">
 
                                     نمایش
+
                                     {{ formatNumber(paginationStart(activePagination)) }}
 
                                     تا
@@ -444,12 +457,14 @@ $this->load->view('layouts/header', array(
 
                                     <ul class="pagination pagination-sm mb-0">
 
+
+                                        <!-- Previous page -->
                                         <li class="page-item"
                                             :class="{ disabled: activePage === 1 }">
 
                                             <button type="button"
                                                     class="page-link"
-                                                    :disabled="activePage === 1 || loadingActive || busy"
+                                                    :disabled="activePage === 1 || loadingActive || saving || deleting || restoringId !== null"
                                                     @click="changeActivePage(activePage - 1)">
 
                                                 قبلی
@@ -459,35 +474,42 @@ $this->load->view('layouts/header', array(
                                         </li>
 
 
+                                        <!-- Page numbers -->
                                         <li v-for="(page, index) in getPageNumbers(activePage, activePagination.total_pages)"
                                             :key="index"
                                             class="page-item"
                                             :class="{ active: page === activePage, disabled: page === '...' }">
 
+
                                             <button v-if="page !== '...'"
                                                     type="button"
                                                     class="page-link"
                                                     :aria-current="page === activePage ? 'page' : null"
-                                                    :disabled="loadingActive || busy"
+                                                    :disabled="loadingActive || saving || deleting || restoringId !== null"
                                                     @click="changeActivePage(page)">
 
                                                 {{ formatNumber(page) }}
 
                                             </button>
 
+
                                             <span v-else class="page-link">
+
                                                 ...
+
                                             </span>
+
 
                                         </li>
 
 
+                                        <!-- Next page -->
                                         <li class="page-item"
                                             :class="{ disabled: activePage === activePagination.total_pages }">
 
                                             <button type="button"
                                                     class="page-link"
-                                                    :disabled="activePage === activePagination.total_pages || loadingActive || busy"
+                                                    :disabled="activePage === activePagination.total_pages || loadingActive || saving || deleting || restoringId !== null"
                                                     @click="changeActivePage(activePage + 1)">
 
                                                 بعدی
@@ -495,6 +517,7 @@ $this->load->view('layouts/header', array(
                                             </button>
 
                                         </li>
+
 
                                     </ul>
 
@@ -504,22 +527,22 @@ $this->load->view('layouts/header', array(
 
                         </div>
 
+
                     </section>
 
                 </div>
 
 
-                <!-- Deleted categories -->
-                <div id="deletedCategoriesPanel"
-                     v-show="activeTab === 'deleted'">
 
-                    <section class="card dashboard-card mb-4"
-                             aria-labelledby="deletedCategoriesHeading">
+                <!-- Deleted categories -->
+                <div v-show="activeTab === 'deleted'">
+
+                    <section class="card dashboard-card mb-4">
+
 
                         <div class="card-header bg-body border-bottom py-3 px-3 px-md-4">
 
-                            <h3 id="deletedCategoriesHeading"
-                                class="h6 fw-bold mb-1">
+                            <h3 class="h6 fw-bold mb-1">
 
                                 <i class="fa-regular fa-trash-can text-danger me-2"
                                    aria-hidden="true"></i>
@@ -531,8 +554,7 @@ $this->load->view('layouts/header', array(
 
                             <p class="small text-body-secondary mb-0">
 
-                                بازیابی دسته‌بندی در مهلت مجاز امکان‌پذیر است؛
-                                وضعیت دقیق هر مورد از سرور دریافت می‌شود.
+                                دسته‌بندی‌های حذف‌شده در مهلت مجاز قابل بازیابی هستند.
 
                             </p>
 
@@ -543,28 +565,38 @@ $this->load->view('layouts/header', array(
 
                             <table class="table table-hover align-middle mb-0">
 
+
                                 <thead class="table-light">
 
                                     <tr>
+
                                         <th scope="col" class="ps-3">
                                             نام دسته‌بندی
                                         </th>
 
-                                        <th scope="col">نوع</th>
+                                        <th scope="col">
+                                            نوع
+                                        </th>
 
-                                        <th scope="col">زمان حذف</th>
+                                        <th scope="col">
+                                            زمان حذف
+                                        </th>
 
-                                        <th scope="col">وضعیت بازیابی</th>
+                                        <th scope="col">
+                                            وضعیت بازیابی
+                                        </th>
 
                                         <th scope="col" class="text-nowrap pe-3">
                                             عملیات
                                         </th>
+
                                     </tr>
 
                                 </thead>
 
 
                                 <tbody aria-live="polite">
+
 
                                     <tr v-if="loadingDeleted">
 
@@ -619,6 +651,7 @@ $this->load->view('layouts/header', array(
                                         <tr v-for="category in deletedCategories"
                                             :key="category.id">
 
+
                                             <td class="ps-3">
 
                                                 <i class="fa-solid me-2"
@@ -631,12 +664,16 @@ $this->load->view('layouts/header', array(
 
 
                                             <td>
+
                                                 {{ category.type === 'income' ? 'درآمد' : 'هزینه' }}
+
                                             </td>
 
 
                                             <td class="text-nowrap">
+
                                                 {{ formatDateTime(category.deleted_at) }}
+
                                             </td>
 
 
@@ -652,7 +689,7 @@ $this->load->view('layouts/header', array(
                                                 <button type="button"
                                                         class="btn btn-sm btn-outline-success"
                                                         @click="restoreCategory(category)"
-                                                        :disabled="!category.restore_available || busy">
+                                                        :disabled="!category.restore_available || saving || deleting || restoringId !== null">
 
                                                     {{ restoringId === category.id ? 'در حال بازیابی...' : 'بازیابی' }}
 
@@ -660,9 +697,11 @@ $this->load->view('layouts/header', array(
 
                                             </td>
 
+
                                         </tr>
 
                                     </template>
+
 
                                 </tbody>
 
@@ -677,9 +716,11 @@ $this->load->view('layouts/header', array(
 
                             <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
 
+
                                 <span class="small text-body-secondary">
 
                                     نمایش
+
                                     {{ formatNumber(paginationStart(deletedPagination)) }}
 
                                     تا
@@ -698,12 +739,14 @@ $this->load->view('layouts/header', array(
 
                                     <ul class="pagination pagination-sm mb-0">
 
+
+                                        <!-- Previous page -->
                                         <li class="page-item"
                                             :class="{ disabled: deletedPage === 1 }">
 
                                             <button type="button"
                                                     class="page-link"
-                                                    :disabled="deletedPage === 1 || loadingDeleted || busy"
+                                                    :disabled="deletedPage === 1 || loadingDeleted || saving || deleting || restoringId !== null"
                                                     @click="changeDeletedPage(deletedPage - 1)">
 
                                                 قبلی
@@ -713,35 +756,42 @@ $this->load->view('layouts/header', array(
                                         </li>
 
 
+                                        <!-- Page numbers -->
                                         <li v-for="(page, index) in getPageNumbers(deletedPage, deletedPagination.total_pages)"
                                             :key="index"
                                             class="page-item"
                                             :class="{ active: page === deletedPage, disabled: page === '...' }">
 
+
                                             <button v-if="page !== '...'"
                                                     type="button"
                                                     class="page-link"
                                                     :aria-current="page === deletedPage ? 'page' : null"
-                                                    :disabled="loadingDeleted || busy"
+                                                    :disabled="loadingDeleted || saving || deleting || restoringId !== null"
                                                     @click="changeDeletedPage(page)">
 
                                                 {{ formatNumber(page) }}
 
                                             </button>
 
+
                                             <span v-else class="page-link">
+
                                                 ...
+
                                             </span>
+
 
                                         </li>
 
-
+                                        
+                                        <!-- Next page -->
                                         <li class="page-item"
                                             :class="{ disabled: deletedPage === deletedPagination.total_pages }">
 
                                             <button type="button"
                                                     class="page-link"
-                                                    :disabled="deletedPage === deletedPagination.total_pages || loadingDeleted || busy"
+                                                    :disabled="deletedPage === deletedPagination.total_pages || loadingDeleted || saving || deleting || restoringId !== null"
                                                     @click="changeDeletedPage(deletedPage + 1)">
 
                                                 بعدی
@@ -749,6 +799,7 @@ $this->load->view('layouts/header', array(
                                             </button>
 
                                         </li>
+
 
                                     </ul>
 
@@ -758,35 +809,31 @@ $this->load->view('layouts/header', array(
 
                         </div>
 
+
                     </section>
 
                 </div>
 
+
             </div>
 
 
-            <!-- Modal backdrop -->
-            <div v-if="showCategoryModal || showDeleteCategoryModal"
-                 class="modal-backdrop fade show"
-                 aria-hidden="true"></div>
-
-
-            <!-- Add / edit category modal -->
+            <!-- Add / Edit category modal -->
             <div class="modal fade tz-modal"
-                 :class="{ show: showCategoryModal }"
-                 v-show="showCategoryModal"
+                 id="categoryModal"
                  tabindex="-1"
                  role="dialog"
                  aria-labelledby="categoryModalTitle"
-                 :aria-hidden="!showCategoryModal"
-                 :aria-modal="showCategoryModal"
-                 @click.self="showCategoryModal = false">
+                 aria-hidden="true">
+
 
                 <div class="modal-dialog modal-dialog-centered">
 
                     <div class="modal-content">
 
-                        <form @submit.prevent="saveCategory" novalidate>
+
+                        <form @submit.prevent="saveCategory">
+
 
                             <div class="modal-header">
 
@@ -807,13 +854,16 @@ $this->load->view('layouts/header', array(
 
                                 <button type="button"
                                         class="btn-close"
-                                        @click="showCategoryModal = false"
+                                        data-bs-dismiss="modal"
+                                        :disabled="saving"
                                         aria-label="بستن"></button>
 
                             </div>
 
 
+
                             <div class="modal-body p-3 p-md-4">
+
 
                                 <p class="small text-body-secondary mb-3">
 
@@ -822,10 +872,10 @@ $this->load->view('layouts/header', array(
                                 </p>
 
 
+                                <!-- Backend error message -->
                                 <div v-if="formMessage"
                                      class="alert alert-danger"
-                                     role="alert"
-                                     aria-live="polite">
+                                     role="alert">
 
                                     {{ formMessage }}
 
@@ -840,40 +890,20 @@ $this->load->view('layouts/header', array(
 
                                         نام دسته‌بندی
 
-                                        <span class="text-danger" aria-hidden="true">*</span>
-
                                     </label>
 
 
                                     <input type="text"
                                            class="form-control"
-                                           :class="{ 'is-invalid': categoryErrors.name }"
                                            id="categoryName"
-                                           maxlength="100"
-                                           required
                                            autocomplete="off"
                                            placeholder="مثلاً خوراکی، حمل‌ونقل یا حقوق"
-                                           aria-describedby="categoryNameError categoryNameHelp"
                                            v-model="categoryName"
-                                           @input="categoryErrors.name = ''; formMessage = ''">
-
-
-                                    <div v-if="categoryErrors.name"
-                                         id="categoryNameError"
-                                         class="invalid-feedback">
-
-                                        {{ categoryErrors.name }}
-
-                                    </div>
-
-
-                                    <div id="categoryNameHelp" class="form-text">
-
-                                        نام باید بین ۱ تا ۱۰۰ نویسه باشد.
-
-                                    </div>
+                                           @input="formMessage = ''"
+                                           :disabled="saving">
 
                                 </div>
+
 
 
                                 <!-- Category type -->
@@ -884,59 +914,61 @@ $this->load->view('layouts/header', array(
 
                                         نوع دسته‌بندی
 
-                                        <span class="text-danger" aria-hidden="true">*</span>
-
                                     </label>
 
 
                                     <select class="form-select"
-                                            :class="{ 'is-invalid': categoryErrors.type }"
                                             id="categoryType"
-                                            required
-                                            aria-describedby="categoryTypeError"
                                             v-model="categoryType"
-                                            @change="categoryErrors.type = ''; formMessage = ''">
+                                            @change="formMessage = ''"
+                                            :disabled="saving">
 
-                                        <option value="">نوع را انتخاب کنید</option>
-                                        <option value="income">درآمد</option>
-                                        <option value="expense">هزینه</option>
+                                        <option value="">
+                                            نوع را انتخاب کنید
+                                        </option>
+
+                                        <option value="income">
+                                            درآمد
+                                        </option>
+
+                                        <option value="expense">
+                                            هزینه
+                                        </option>
 
                                     </select>
 
-
-                                    <div v-if="categoryErrors.type"
-                                         id="categoryTypeError"
-                                         class="invalid-feedback">
-
-                                        {{ categoryErrors.type }}
-
-                                    </div>
-
                                 </div>
+
 
                             </div>
 
 
+
                             <div class="modal-footer">
+
 
                                 <button type="button"
                                         class="btn btn-outline-secondary"
-                                        @click="showCategoryModal = false">
+                                        data-bs-dismiss="modal"
+                                        :disabled="saving">
 
                                     انصراف
 
                                 </button>
 
 
+
                                 <button type="submit"
                                         class="btn btn-primary"
-                                        :disabled="busy">
+                                        :disabled="saving">
 
                                     {{ saving ? 'در حال ذخیره...' : 'ذخیره' }}
 
                                 </button>
 
+
                             </div>
+
 
                         </form>
 
@@ -947,20 +979,20 @@ $this->load->view('layouts/header', array(
             </div>
 
 
+
             <!-- Delete category confirmation modal -->
             <div class="modal fade tz-modal"
-                 :class="{ show: showDeleteCategoryModal }"
-                 v-show="showDeleteCategoryModal"
+                 id="deleteCategoryModal"
                  tabindex="-1"
                  role="dialog"
                  aria-labelledby="deleteCategoryModalTitle"
-                 :aria-hidden="!showDeleteCategoryModal"
-                 :aria-modal="showDeleteCategoryModal"
-                 @click.self="showDeleteCategoryModal = false">
+                 aria-hidden="true">
+
 
                 <div class="modal-dialog modal-dialog-centered">
 
                     <div class="modal-content">
+
 
                         <div class="modal-header">
 
@@ -977,13 +1009,16 @@ $this->load->view('layouts/header', array(
 
                             <button type="button"
                                     class="btn-close"
-                                    @click="showDeleteCategoryModal = false"
+                                    data-bs-dismiss="modal"
+                                    :disabled="deleting"
                                     aria-label="بستن"></button>
 
                         </div>
 
 
+
                         <div class="modal-body">
+
 
                             <p class="mb-2">
 
@@ -998,6 +1033,7 @@ $this->load->view('layouts/header', array(
                             </p>
 
 
+
                             <div class="alert alert-warning small mb-0"
                                  role="note">
 
@@ -1010,39 +1046,46 @@ $this->load->view('layouts/header', array(
                             </div>
 
 
+
                             <div v-if="deleteMessage"
                                  class="alert alert-danger mt-3 mb-0"
-                                 role="alert"
-                                 aria-live="polite">
+                                 role="alert">
 
                                 {{ deleteMessage }}
 
                             </div>
 
+
                         </div>
+
 
 
                         <div class="modal-footer">
 
+
                             <button type="button"
                                     class="btn btn-outline-secondary"
-                                    @click="showDeleteCategoryModal = false">
+                                    data-bs-dismiss="modal"
+                                    :disabled="deleting">
 
                                 انصراف
 
                             </button>
 
 
+
                             <button type="button"
                                     class="btn btn-danger"
                                     @click="deleteCategory"
-                                    :disabled="busy || !categoryToDelete">
+                                    :disabled="deleting || !categoryToDelete">
 
                                 {{ deleting ? 'در حال حذف...' : 'حذف دسته‌بندی' }}
 
                             </button>
 
+
                         </div>
+
 
                     </div>
 
@@ -1050,9 +1093,12 @@ $this->load->view('layouts/header', array(
 
             </div>
 
+
+
         </main>
 
     </div>
+
 </div>
 
 
@@ -1064,7 +1110,7 @@ $this->load->view('layouts/header', array(
 <script>
     Vue.createApp({
         data(){
-            return(){
+            return {
                 activeCategories: [],
                 deletedCategories: [],
 
@@ -1080,7 +1126,7 @@ $this->load->view('layouts/header', array(
 
                 searchInput: '',
                 typeInput: 'all',
-                inputSort: 'newest',
+                sortInput: 'newest',
 
                 appliedFilters: {
                     search: '',
@@ -1102,10 +1148,6 @@ $this->load->view('layouts/header', array(
                 categoryName: '',
                 categoryType: '',
 
-                categoryErrors:{
-                    name: '',
-                    type: ''
-                },
 
                 formMessage: '',
 
@@ -1115,17 +1157,13 @@ $this->load->view('layouts/header', array(
                 categoryToDelete: null,
                 deleteMessage: '',
 
-                showCategoryModal: false,
-                showDeleteCategoryModal: false,
 
-                busy: false,
                 saving: false,
                 deleting: false,
-
                 restoringId: null
-
             }
         },
+
         methods: {
             async loadActiveCategories(page = this.activePage){
                 this.loadingActive = true;
@@ -1134,9 +1172,9 @@ $this->load->view('layouts/header', array(
                 const params = new URLSearchParams();
 
                 params.append('page', page);
-                params.append('search', appliedFilters.search);
-                params.append('type', appliedFilters.type);
-                params.append('sort', appliedFilters.sort);
+                params.append('search', this.appliedFilters.search);
+                params.append('type', this.appliedFilters.type);
+                params.append('sort', this.appliedFilters.sort);
 
                 try{
                     const response = await fetch(
@@ -1226,6 +1264,11 @@ $this->load->view('layouts/header', array(
             },
             
             applyFilters(){
+
+                if (this.saving || this.deleting || this.restoringId !== null) {
+                    return;
+                }
+
                 this.appliedFilters = {
                     search : this.searchInput.trim(),
                     type: this.typeInput,
@@ -1240,6 +1283,11 @@ $this->load->view('layouts/header', array(
             },
 
             clearFilters(){
+
+                if (this.saving || this.deleting || this.restoringId !== null) {
+                    return;
+                }
+
                 this.searchInput = '';
                 this.typeInput = 'all';
                 this.sortInput = 'newest';
@@ -1257,6 +1305,10 @@ $this->load->view('layouts/header', array(
                 this.loadActiveCategories(1);
             },
 
+            showActiveCategories() {
+                this.activeTab = 'active';
+            },
+
             showDeletedCategories(){
                 this.activeTab = 'deleted';
 
@@ -1267,7 +1319,7 @@ $this->load->view('layouts/header', array(
 
             changeActivePage(page) {
                 
-                if (this.busy || this.loadingActive || !this.activePagination || page < 1 || page > this.activePagination.total_pages || page === this.activePage) {
+                if (this.saving || this.deleting || this.restoringId !== null || this.loadingActive || !this.activePagination || page < 1 || page > this.activePagination.total_pages || page === this.activePage) {
                     return;
                 }
 
@@ -1277,7 +1329,7 @@ $this->load->view('layouts/header', array(
 
             changeDeletedPage(page) {
                 
-                if (this.busy || this.loadingDeleted || !this.deletedPagination || page < 1 || page > this.deletedPagination.total_pages || page === this.deletedPage) {
+                if (this.saving || this.deleting || this.restoringId !== null || this.loadingDeleted || !this.deletedPagination || page < 1 || page > this.deletedPagination.total_pages || page === this.deletedPage) {
                     return;
                 }
 
@@ -1346,6 +1398,14 @@ $this->load->view('layouts/header', array(
                 return window.PersianFormat.integer(number);
             },
 
+            formatDate(date) {
+                return window.PersianFormat.date(date);
+            },
+
+            formatDateTime(date) {
+                return window.PersianFormat.dateTime(date);
+            },
+
             categoryIcon(category) {
 
                 const name = String(category.name || '');
@@ -1396,10 +1456,6 @@ $this->load->view('layouts/header', array(
                 this.categoryName = '';
                 this.categoryType = '';
 
-                this.categoryErrors = {
-                    name: '',
-                    type: ''
-                };
 
                 this.formMessage = '';
 
@@ -1408,13 +1464,21 @@ $this->load->view('layouts/header', array(
             },
 
             openAddModal(){
+
+                if (this.saving || this.deleting || this.restoringId !== null) {
+                    return;
+                }
+
                 this.resetCategoryForm();
 
-                this.showDeleteCategoryModal = false;
-                this.showCategoryModal = true;
+                window.bootstrap.Modal.getOrCreateInstance(document.getElementById("categoryModal")).show();
             },
 
             openEditModal(category) {
+
+                if (this.saving || this.deleting || this.restoringId !== null) {
+                    return;
+                }
 
                 this.resetCategoryForm();
 
@@ -1424,13 +1488,176 @@ $this->load->view('layouts/header', array(
                 this.categoryName = category.name;
                 this.categoryType = category.type;
 
-                this.showDeleteCategoryModal = false;
-                this.showCategoryModal = true;
+                window.bootstrap.Modal.getOrCreateInstance(document.getElementById("categoryModal")).show();
 
             },
 
-            
+            //ایجاد و ویرایش دسته بندی
+            async saveCategory(){
+
+                if (this.saving || this.deleting || this.restoringId !== null) {
+                    return;
+                }
+
+                this.saving = true;
+
+                this.formMessage = '';
+
+                let url = "<?= site_url('api/categories/store') ?>";
+
+                if (this.isEditing) {
+                    url = "<?= site_url('api/categories') ?>/"
+
+                        + this.editingCategoryId + "/update";
+                }
+
+                const page = this.isEditing ? this.activePage : 1;
+
+                try{
+                    const response = await fetch(url, {
+                        method: 'POST',
+                        body: JSON.stringify({
+                            name: this.categoryName.trim(),
+                            type: this.categoryType
+                        })
+                    });
+
+                    const result = await response.json();
+
+                    if(result.success){
+                        window.bootstrap.Modal.getOrCreateInstance(document.getElementById("categoryModal")).hide();
+
+                        this.resetCategoryForm();
+
+                        this.activePage = page; 
+
+                        this.message = result.message || "دسته بندی با موفقیت ذخیره شد. ";
+                        this.messageType = 'success';
+
+                        const loaded = await this.loadActiveCategories(page);
+
+                        if(!loaded){
+                            this.message = "دسته بندی ذخیره شد، اما فهرست به روز رسانی نشد. ";
+                            this.messageType = "warning";
+                        }
+                    }else{
+                        this.formMessage = result.message || "ذخیره دسته بندی انجام نشد. ";
+                    }
+                }catch(error){
+                    this.formMessage = "ارتباط با سرور برقرار نشد، دوباره تلاش کنید. ";
+                }finally{
+                    this.saving = false;
+                }
+            },
+
+            askDelete(category){
+
+                if (this.saving || this.deleting || this.restoringId !== null) {
+                    return;
+                }
+
+                this.categoryToDelete = category;
+
+                this.deleteMessage = '';
+
+                window.bootstrap.Modal.getOrCreateInstance(document.getElementById("deleteCategoryModal")).show();
+            },
+
+            async deleteCategory(){
+
+                if(this.saving || this.deleting || this.restoringId !== null || !this.categoryToDelete){
+                    return;
+                }
+
+                this.deleting = true;
+                this.deleteMessage = '';
+
+                try{
+                    const response = await fetch("<?= site_url('api/categories') ?>/" 
+                        + this.categoryToDelete.id + "/delete", {
+                        method: 'POST'
+                    });
+
+                    const result = await response.json();
+
+                    if(result.success){
+
+                        window.bootstrap.Modal.getOrCreateInstance(document.getElementById("deleteCategoryModal")).hide();
+
+                        this.categoryToDelete = null;
+
+                        this.deletedLoaded = false;
+
+                        this.message = result.message || "دسته بندی مورد نظر با موفقیت حذف شد. ";
+                        this.messageType = 'success';
+
+                        const loaded = await this.loadActiveCategories();
+
+                        if(!loaded){
+                            this.message = "دسته بندی مورد نظر حذف شد، اما فهرست به روز نشد. ";
+                            this.messageType = 'warning';
+                        }
+                    } else{
+                        this.deleteMessage = result.message || "حذف دسته بندی انجام نشد. ";
+                    }
+                }catch(error){
+                    this.deleteMessage = "ارتباط با سرور برقرار نشد، دوباره تلاش کنید. "    
+                }finally{
+                    this.deleting = false;
+                }
+            },
+
+            async restoreCategory(category){
+                if(this.saving || this.deleting || this.restoringId !== null || !category.restore_available){
+                    return;
+                }
+
+                const confirmed = window.confirm("دسته بندی بازیابی شود؟ تراکنش های حذف شده خودکار بازیابی نمی شوند. ");
+
+                if(!confirmed){
+                    return;
+                }
+
+                this.restoringId = category.id;
+
+                try{
+                    const response = await fetch("<?= site_url('api/categories') ?>/"
+                        + category.id + "/restore",{
+                            method: 'POST'
+                    });
+
+                    const result = await response.json();
+
+                    if(result.success){
+
+                        const activeLoaded = await this.loadActiveCategories();
+
+                        const deletedLoaded = await this.loadDeletedCategories();
+
+                        if(activeLoaded && deletedLoaded){
+                            this.message = result.message || "دسته بندی با موفقیت بازیابی شد. ";
+                            this.messageType = "success";
+                        } else{
+                            this.message = "دسته بندی بازیابی شد، اما یکی از فهرست ها به روز نشد. ";
+                            this.messageType = 'warning';
+                        }
+                    } else{
+                        this.message = result.message || "بازیابی دسته بندی انجام نشد. ";
+                        this.messageType = 'danger';
+                    }
+                }catch(error){
+                    this.message = "ارتباط با سرور برقرار نشد، دوباره تلاش کنید. ";
+                    this.messageType = 'danger';
+                } finally{
+                    this.restoringId = null;
+                }
+            }
+        },
+
+        mounted(){
+            this.loadActiveCategories();
         }
+
     }).mount('#categoriesApp')
 </script>
 
