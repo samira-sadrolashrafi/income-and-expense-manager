@@ -30,7 +30,9 @@ class Dashboard_api extends BaseApiController
 
     public function update_balance()
     {
-        $balance = $this->input->post('balance');
+        $data = json_decode(file_get_contents('php://input'), true);
+
+        $balance = isset($data['balance']) ? $data['balance'] : null;
 
         $amount_error = $this->balance_service->amount_error($balance, true);
 
