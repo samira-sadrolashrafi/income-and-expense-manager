@@ -1112,7 +1112,7 @@ $this->load->view('layouts/header', array(
                     }
 
                     this.savingBalance = true;
-                    this.balanceModalSaving = '';
+                    this.balanceModalMessage = '';
 
                     try{
                         const amount = window.PersianFormat.normalizeInputNumber(this.balanceInput).trim();
@@ -1124,7 +1124,7 @@ $this->load->view('layouts/header', array(
 
                         const result = await response.json();
 
-                        if(!success.result){
+                        if(!result.success){
                             this.balanceModalMessage = result.message || "تغییر موجودی انجام نشد. ";
                             return;
                         }
@@ -1133,7 +1133,7 @@ $this->load->view('layouts/header', array(
                         this.balanceInput = '';
 
                         this.pageMessage = result.message || "موجودی با موفقیت تغییر کرد. ";
-                        this.MessageType = 'success';
+                        this.pageMessageType = 'success';
 
                         await this.loadBalance();
 
@@ -1153,7 +1153,7 @@ $this->load->view('layouts/header', array(
                         return;
                     }
 
-                    this.resettigBalance = true;
+                    this.resettingBalance = true;
                     this.resetBalanceMessage = '';
 
                     try{
@@ -1207,5 +1207,6 @@ $this->load->view('layouts/footer', array(
         base_url('assets/js/dashboard.js')
     )
 ));
+
 ?>
 

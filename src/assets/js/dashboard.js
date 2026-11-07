@@ -2,6 +2,7 @@
 (function (w, d) {
     'use strict';
 
+
     function message(id, text, type = 'danger') {
 
         const element = d.getElementById(id);
@@ -33,17 +34,21 @@
 
             ]);
 
-            if (
-                !Array.isArray(transactionsResult.transactions) ||
-                !Array.isArray(categoriesResult.categories)
-            ) {
+
+            if (!Array.isArray(transactionsResult.transactions) || !Array.isArray(categoriesResult.categories)) {
+
                 throw new Error('ساختار اطلاعات دریافتی معتبر نیست.');
+
             }
+
+
+            message('dashboardMessage', '');
 
             state.transactions = transactionsResult.transactions;
             state.categories = categoriesResult.categories;
 
             w.TarazinoTransactions.render(state);
+
 
         } catch (error) {
 
@@ -54,14 +59,18 @@
 
             message('dashboardMessage', error.message);
 
+
         } finally {
 
             state.loading = false;
 
         }
 
+
         if (refreshReport) {
+
             await w.TarazinoReports.render();
+
         }
 
     }
@@ -75,15 +84,18 @@
             return;
         }
 
-        if (
-            !w.PersianFormat ||
-            !w.TarazinoApi ||
-            !w.TarazinoReports ||
-            !w.TarazinoTransactions
-        ) {
-            message('dashboardMessage', 'یکی از فایل‌های مشترک داشبورد بارگذاری نشده است.');
+
+        if (!w.PersianFormat || !w.TarazinoApi || !w.TarazinoReports || !w.TarazinoTransactions) {
+
+            message(
+                'dashboardMessage',
+                'یکی از فایل‌های مشترک داشبورد بارگذاری نشده است.'
+            );
+
             return;
+
         }
+
 
         const state = {
 
@@ -102,9 +114,11 @@
 
         };
 
-        w.TarazinoReports.initialize(state);
+
+        w.TarazinoReports.initialize();
 
         w.TarazinoTransactions.initialize(state, () => reload(state));
+
 
         // The report module loads its initial data on its own.
         reload(state, false);
@@ -113,9 +127,14 @@
 
 
     if (d.readyState === 'loading') {
+
         d.addEventListener('DOMContentLoaded', initialize, { once: true });
+
     } else {
+
         initialize();
+
     }
+
 
 })(window, document);
