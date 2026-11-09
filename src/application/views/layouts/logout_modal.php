@@ -5,24 +5,26 @@
     aria-labelledby="logoutConfirmTitle"
     aria-describedby="logoutConfirmDescription"
     aria-hidden="true"
-    data-logout-url="<?php echo html_escape(site_url('auth/logout')); ?>"
-    data-login-url="<?php echo html_escape(site_url('login')); ?>"
 >
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0 shadow-sm">
+
             <div class="modal-header border-0 pb-0 px-4 pt-4">
                 <h2 class="modal-title fs-5 fw-bold" id="logoutConfirmTitle">
                     تأیید خروج از حساب
                 </h2>
+
                 <button
                     type="button"
                     class="btn-close"
                     data-bs-dismiss="modal"
                     aria-label="بستن پنجره"
+                    @click="logoutMessage = ''"
                 ></button>
             </div>
 
             <div class="modal-body px-4 py-3">
+
                 <div class="d-flex align-items-start gap-3">
                     <span
                         class="d-inline-flex align-items-center justify-content-center flex-shrink-0 rounded-3 bg-danger-subtle text-danger p-3 fs-4"
@@ -35,6 +37,7 @@
                         <p class="fw-semibold mb-2" id="logoutConfirmDescription">
                             آیا مطمئنی می‌خواهی از حساب کاربری خارج شوی؟
                         </p>
+
                         <p class="small text-body-secondary mb-0">
                             برای استفاده دوباره از ترازینو باید وارد حساب خود شوی.
                         </p>
@@ -42,29 +45,83 @@
                 </div>
 
                 <div
+                    v-if="logoutMessage"
                     id="logoutMessage"
-                    class="alert alert-danger d-none mt-3 mb-0"
+                    class="alert alert-danger mt-3 mb-0"
                     role="alert"
                     aria-live="polite"
-                ></div>
+                >
+                    {{ logoutMessage }}
+                </div>
+
             </div>
 
             <div class="modal-footer border-0 px-4 pt-0 pb-4 gap-2">
+
                 <button
                     type="button"
                     class="btn btn-outline-secondary"
                     data-bs-dismiss="modal"
+                    :disabled="loggingOut"
+                    @click="logoutMessage = ''"
                 >
                     انصراف
                 </button>
+
                 <button
                     type="button"
-                    id="confirmLogoutButton"
                     class="btn btn-danger"
+                    :disabled="loggingOut"
+                    @click="logout"
                 >
-                    بله، خارج شو
+                    {{ loggingOut ? 'در حال خروج...' : 'بله، خارج شو' }}
                 </button>
+
             </div>
+
         </div>
     </div>
 </div>
+
+<script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+
+
+<script>
+    Vue.createApp({
+        data(){
+            return{
+                loggingOut: false,
+                logoutMessage: ''
+            }
+        },
+        methods:{
+            async logout(){
+                if(this.loggingOut){
+                    return;
+                }
+                this.loggingOut = true;
+                this.logoutMessage = '';
+
+                try{
+                    const response = await fetch("<?= site_url('auth/logout') ?>",{
+                        method:'POST'
+                    });
+
+                    const result = await response.json();
+
+                    if(result.success){
+                        window.location.href = "<?= site_url('login') ?>";
+                    } else{
+                        this.logoutMessage = result.message || "خروج از حساب انجام نشد، دوباره تلاش کنید. ";
+                        this.loggingOut = false;
+                    }
+                }catch(error){
+                    this.logoutMessage = "ارتباط با سرور برقرار نشد، دوباره تلاش کنید. ";
+                    this.loggingOut = false;
+                }
+            }
+        }
+    }).mount('#logoutConfirmModal');
+</script>
+
+
