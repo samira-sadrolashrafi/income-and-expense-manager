@@ -30,8 +30,6 @@ $this->load->view('layouts/header', array(
 
                 <div class="px-3 px-xl-4 pt-4">
 
-                    <div id="dashboardMessage" class="alert d-none" role="alert" aria-live="polite"></div>
-
                     <div v-if="pageMessage"
                          class="alert"
                          :class="'alert-' + pageMessageType"
@@ -416,9 +414,8 @@ $this->load->view('layouts/header', array(
                         <button type="button"
                                 class="btn btn-success"
                                 id="addDashboardTransactionButton"
-                                data-bs-toggle="modal"
-                                data-bs-target="#dashboardTransactionModal"
-                                disabled>
+                                @click="openTransactionModal"
+                                :disabled="categories.length === 0 || savingTransaction">
 
                             <i class="fa-solid fa-plus me-1" aria-hidden="true"></i>
                             ثبت تراکنش
@@ -429,7 +426,8 @@ $this->load->view('layouts/header', array(
                         <button type="button"
                                 class="btn btn-primary"
                                 data-bs-toggle="modal"
-                                data-bs-target="#dashboardAddCategoryModal">
+                                data-bs-target="#dashboardAddCategoryModal"
+                                @click="resetCategoryForm">
 
                             <i class="fa-solid fa-folder-plus me-1" aria-hidden="true"></i>
                             افزودن دسته‌بندی
@@ -439,7 +437,7 @@ $this->load->view('layouts/header', array(
 
                         <button type="button"
                                 class="btn btn-outline-primary"
-                                @click="showBalanceModal = true; balanceModalMessage = ''; balanceInput = ''">
+                                @click="openBalanceModal">
 
                             <i class="fa-solid fa-pen-to-square me-1" aria-hidden="true"></i>
                             تغییر دستی موجودی
@@ -449,7 +447,7 @@ $this->load->view('layouts/header', array(
 
                         <button type="button"
                                 class="btn btn-outline-danger"
-                                @click="showResetBalanceModal = true; resetBalanceMessage = ''">
+                                @click="openResetBalanceModal">
 
                             <i class="fa-solid fa-rotate-left me-1" aria-hidden="true"></i>
                             صفر کردن موجودی
@@ -593,7 +591,7 @@ $this->load->view('layouts/header', array(
                                     <tbody id="dashboardTransactionsBody"
                                            aria-live="polite">
 
-                                        <tr>
+                                        <tr v-if="loadingTransactions">
 
                                             <td colspan="5"
                                                 class="text-center text-body-secondary py-5">
@@ -603,6 +601,85 @@ $this->load->view('layouts/header', array(
                                             </td>
 
                                         </tr>
+
+
+                                        <tr v-else-if="transactionsError">
+
+                                            <td colspan="5"
+                                                class="text-center text-danger py-5">
+
+                                                {{ transactionsError }}
+
+                                                <button type="button"
+                                                        class="btn btn-sm btn-outline-primary ms-2"
+                                                        @click="loadTransactions">
+                                                    تلاش دوباره
+                                                </button>
+
+                                            </td>
+
+                                        </tr>
+
+
+                                        <tr v-else-if="transactions.length === 0">
+
+                                            <td colspan="5"
+                                                class="text-center text-body-secondary py-5">
+
+                                                هنوز تراکنشی ثبت نشده است.
+
+                                            </td>
+
+                                        </tr>
+
+
+                                        <template v-else>
+
+                                            <tr v-for="transaction in transactions"
+                                                :key="transaction.id">
+
+                                                <td class="ps-3 ps-xxl-4">
+                                                    {{ transaction.title || '—' }}
+                                                </td>
+
+                                                <td>
+                                                    {{ categoryName(transaction) }}
+                                                </td>
+
+                                                <td :class="categoryType(transaction) === 'expense' ? 'text-danger' : 'text-success'">
+                                                    {{ categoryType(transaction) === 'expense' ? '− ' : '+ ' }}{{ formatMoney(Number(transaction.amount)) }}
+                                                </td>
+
+                                                <td class="text-nowrap">
+                                                    {{ formatDate(transaction.transaction_date) }}
+                                                </td>
+
+                                                <td class="text-nowrap text-center pe-3">
+
+                                                    <button type="button"
+                                                            class="btn btn-sm btn-outline-primary me-1"
+                                                            @click="editTransaction(transaction)"
+                                                            :disabled="savingTransaction || deletingTransaction">
+
+                                                        ویرایش
+
+                                                    </button>
+
+
+                                                    <button type="button"
+                                                            class="btn btn-sm btn-outline-danger"
+                                                            @click="askDelete(transaction)"
+                                                            :disabled="savingTransaction || deletingTransaction">
+
+                                                        حذف
+
+                                                    </button>
+
+                                                </td>
+
+                                            </tr>
+
+                                        </template>
 
                                     </tbody>
 
@@ -624,14 +701,11 @@ $this->load->view('layouts/header', array(
 
 
     <!-- Balance Modal -->
-    <div v-if="showBalanceModal"
-         class="modal fade show d-block tz-modal"
-         style="display: block;"
+    <div class="modal fade tz-modal"
+         id="dashboardBalanceModal"
          tabindex="-1"
-         role="dialog"
          aria-labelledby="balanceModalLabel"
-         aria-modal="true"
-         @click.self="showBalanceModal = false">
+         aria-hidden="true">
 
         <div class="modal-dialog modal-dialog-centered">
 
@@ -652,7 +726,7 @@ $this->load->view('layouts/header', array(
 
                         <button type="button"
                                 class="btn-close"
-                                @click="showBalanceModal = false"
+                                data-bs-dismiss="modal"
                                 aria-label="بستن">
                         </button>
 
@@ -696,13 +770,15 @@ $this->load->view('layouts/header', array(
                                    class="form-control"
                                    id="balanceInput"
                                    v-model="balanceInput"
+                                   @input="formatBalanceAmount"
                                    autocomplete="off">
 
                         </div>
 
 
                         <div class="form-text">
-                            مثال: 500000 برای افزایش یا -200000 برای کاهش.
+                            مثال: <span dir="ltr">۵۰۰,۰۰۰</span> برای افزایش یا
+                            <span dir="ltr">-۲۰۰,۰۰۰</span> برای کاهش.
                         </div>
 
                     </div>
@@ -712,7 +788,7 @@ $this->load->view('layouts/header', array(
 
                         <button type="button"
                                 class="btn btn-outline-secondary"
-                                @click="showBalanceModal = false">
+                                data-bs-dismiss="modal">
 
                             انصراف
 
@@ -742,14 +818,11 @@ $this->load->view('layouts/header', array(
 
 
     <!-- Reset Balance Modal -->
-    <div v-if="showResetBalanceModal"
-         class="modal fade show d-block tz-modal"
-         style="display: block;"
+    <div class="modal fade tz-modal"
+         id="dashboardResetBalanceModal"
          tabindex="-1"
-         role="dialog"
          aria-labelledby="resetBalanceModalLabel"
-         aria-modal="true"
-         @click.self="showResetBalanceModal = false">
+         aria-hidden="true">
 
         <div class="modal-dialog modal-dialog-centered">
 
@@ -769,7 +842,7 @@ $this->load->view('layouts/header', array(
 
                     <button type="button"
                             class="btn-close"
-                            @click="showResetBalanceModal = false"
+                            data-bs-dismiss="modal"
                             aria-label="بستن">
                     </button>
 
@@ -803,7 +876,7 @@ $this->load->view('layouts/header', array(
 
                     <button type="button"
                             class="btn btn-outline-secondary"
-                            @click="showResetBalanceModal = false">
+                            data-bs-dismiss="modal">
 
                         انصراف
 
@@ -831,41 +904,429 @@ $this->load->view('layouts/header', array(
     </div>
 
 
-    <!-- Modal Backdrop -->
-    <div v-if="showBalanceModal || showResetBalanceModal"
-         class="modal-backdrop fade show"
-         @click="showBalanceModal = false; showResetBalanceModal = false">
+<!-- Transaction Modal -->
+    <div class="modal fade tz-modal"
+         data-component="transaction-form-modal"
+         id="dashboardTransactionModal"
+         tabindex="-1"
+         aria-labelledby="dashboardTransactionModalTitle"
+         aria-hidden="true">
+
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+
+            <div class="modal-content">
+
+                <form id="dashboardTransactionForm"
+                      @submit.prevent="saveTransaction"
+                      novalidate
+                      autocomplete="off">
+
+
+                    <div class="modal-header px-4 py-3">
+
+                        <div class="d-flex align-items-center gap-2">
+
+                            <span class="d-inline-flex align-items-center justify-content-center rounded-3 bg-primary-subtle text-primary p-2" aria-hidden="true">
+                                <i class="fa-solid fa-receipt"></i>
+                            </span>
+
+                            <h2 class="modal-title fs-5 fw-semibold"
+                                id="dashboardTransactionModalTitle">
+
+                                {{ editingId ? 'ویرایش تراکنش' : 'افزودن تراکنش' }}
+
+                            </h2>
+
+                        </div>
+
+
+                        <button type="button"
+                                class="btn-close"
+                                data-bs-dismiss="modal"
+                                aria-label="بستن">
+                        </button>
+
+                    </div>
+
+
+                    <div class="modal-body p-4">
+
+
+                        <div v-if="transactionMessage"
+                             id="dashboardTransactionFormMessage"
+                             class="alert alert-danger"
+                             role="alert"
+                             aria-live="polite">
+
+                            {{ transactionMessage }}
+
+                        </div>
+
+
+                        <div v-if="categoriesWarning"
+                             id="dashboardTransactionCategoriesWarning"
+                             class="alert alert-warning"
+                             role="alert"
+                             aria-live="polite">
+
+                            {{ categoriesWarning }}
+
+                        </div>
+
+
+                        <div class="row g-3">
+
+
+                            <div class="col-md-6">
+
+                                <label for="dashboardTransactionTitle" class="form-label fw-medium">
+
+                                    <i class="fa-solid fa-pen-to-square text-body-secondary me-1" aria-hidden="true"></i>
+                                    عنوان
+
+                                </label>
+
+                                <input type="text"
+                                       class="form-control"
+                                       id="dashboardTransactionTitle"
+                                       name="title"
+                                       v-model="transactionForm.title"
+                                       maxlength="150"
+                                       required
+                                       autocomplete="off">
+
+                            </div>
+
+
+                            <div class="col-md-6">
+
+                                <label for="dashboardTransactionType" class="form-label fw-medium">
+
+                                    <i class="fa-solid fa-arrow-right-arrow-left text-body-secondary me-1" aria-hidden="true"></i>
+                                    نوع تراکنش
+
+                                </label>
+
+                                <select class="form-select"
+                                        id="dashboardTransactionType"
+                                        v-model="transactionForm.type"
+                                        @change="changeTransactionType"
+                                        required
+                                        aria-describedby="dashboardTransactionTypeHelp">
+
+                                    <option value="">
+                                        نوع را انتخاب کنید
+                                    </option>
+
+                                    <option value="income">
+                                        درآمد
+                                    </option>
+
+                                    <option value="expense">
+                                        هزینه
+                                    </option>
+
+                                </select>
+
+                                <div id="dashboardTransactionTypeHelp" class="form-text">
+                                    ابتدا نوع تراکنش را انتخاب کنید؛ سپس دسته‌بندی را انتخاب کنید.
+                                </div>
+
+                            </div>
+
+
+                            <div class="col-md-6">
+
+                                <label for="dashboardTransactionAmount" class="form-label fw-medium">
+
+                                    <i class="fa-solid fa-money-bill-wave text-body-secondary me-1" aria-hidden="true"></i>
+                                    مبلغ
+
+                                </label>
+
+
+                                <div class="input-group" dir="ltr">
+
+                                    <span class="input-group-text">
+                                        تومان
+                                    </span>
+
+                                    <input type="text"
+                                           class="form-control text-start"
+                                           id="dashboardTransactionAmount"
+                                           name="amount"
+                                           v-model="transactionForm.amount"
+                                           @input="formatTransactionAmount"
+                                           inputmode="decimal"
+                                           maxlength="20"
+                                           autocomplete="off"
+                                           required>
+
+                                </div>
+
+
+                                <div class="form-text">
+                                    مبلغ صفر یا مثبت است؛ برای اعشار از نقطه استفاده کنید (حداکثر دو رقم).
+                                </div>
+
+                            </div>
+
+
+                            <div class="col-md-6">
+
+                                <label for="dashboardTransactionCategory" class="form-label fw-medium">
+
+                                    <i class="fa-solid fa-tags text-body-secondary me-1" aria-hidden="true"></i>
+                                    دسته‌بندی
+
+                                </label>
+
+                                <select class="form-select"
+                                        id="dashboardTransactionCategory"
+                                        name="category_id"
+                                        v-model="transactionForm.category_id"
+                                        required>
+
+                                    <option value="">
+                                        {{ transactionForm.type ? 'دسته‌بندی را انتخاب کنید' : 'ابتدا نوع تراکنش را انتخاب کنید' }}
+                                    </option>
+
+                                    <option v-for="category in transactionCategories()"
+                                            :key="category.id"
+                                            :value="String(category.id)">
+
+                                        {{ category.name }}
+
+                                    </option>
+
+                                </select>
+
+                            </div>
+
+
+                            <div class="col-md-6">
+
+                                <label for="dashboardTransactionDate" class="form-label fw-medium">
+
+                                    <i class="fa-solid fa-calendar-days text-body-secondary me-1" aria-hidden="true"></i>
+                                    تاریخ
+
+                                </label>
+
+                                <input type="date"
+                                       class="form-control"
+                                       id="dashboardTransactionDate"
+                                       name="transaction_date"
+                                       v-model="transactionForm.transaction_date"
+                                       required>
+
+                            </div>
+
+
+                            <div class="col-12">
+
+                                <label for="dashboardTransactionDescription" class="form-label fw-medium">
+
+                                    <i class="fa-solid fa-align-right text-body-secondary me-1" aria-hidden="true"></i>
+                                    توضیحات
+                                    <span class="text-secondary">(اختیاری)</span>
+
+                                </label>
+
+                                <textarea class="form-control"
+                                          id="dashboardTransactionDescription"
+                                          name="description"
+                                          v-model="transactionForm.description"
+                                          rows="3"></textarea>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+
+                    <div class="modal-footer px-4 py-3 bg-body-tertiary">
+
+                        <button type="button"
+                                class="btn btn-outline-secondary"
+                                data-bs-dismiss="modal">
+                            انصراف
+                        </button>
+
+
+                        <button type="submit"
+                                id="saveDashboardTransactionButton"
+                                class="btn btn-primary px-4"
+                                :disabled="savingTransaction">
+
+                            <i class="fa-solid fa-floppy-disk me-1" aria-hidden="true"></i>
+
+                            {{ savingTransaction ? 'در حال ذخیره...' : 'ذخیره' }}
+
+                        </button>
+
+                    </div>
+
+                </form>
+
+            </div>
+
+        </div>
+
     </div>
 
-</div>
+
+    <!-- Add Category Modal -->
+    <div class="modal fade tz-modal"
+         id="dashboardAddCategoryModal"
+         tabindex="-1"
+         aria-labelledby="dashboardAddCategoryTitle"
+         aria-hidden="true">
+
+        <div class="modal-dialog modal-dialog-centered">
+
+            <div class="modal-content">
+
+                <form id="dashboardAddCategoryForm"
+                      @submit.prevent="saveCategory">
 
 
-<!-- Transaction Modal -->
-<?php $this->load->view('transactions/form_modal', array('form_prefix' => 'dashboardTransaction')); ?>
+                    <div class="modal-header">
+
+                        <h2 class="modal-title fs-5"
+                            id="dashboardAddCategoryTitle">
+
+                            <i class="fa-solid fa-folder-plus text-primary me-2"
+                               aria-hidden="true"></i>
+
+                            افزودن دسته‌بندی
+
+                        </h2>
+
+                        <button type="button"
+                                class="btn-close"
+                                data-bs-dismiss="modal"
+                                aria-label="بستن">
+                        </button>
+
+                    </div>
 
 
-<!-- Add Category Modal -->
-<div class="modal fade tz-modal"
-     id="dashboardAddCategoryModal"
-     tabindex="-1"
-     aria-labelledby="dashboardAddCategoryTitle"
-     aria-hidden="true">
+                    <div class="modal-body">
 
-    <div class="modal-dialog modal-dialog-centered">
+                        <p class="small text-body-secondary">
+                            رنگ و آیکون دسته‌بندی به‌صورت پیش‌فرض توسط ترازینو تعیین می‌شود.
+                        </p>
 
-        <div class="modal-content">
 
-            <div id="dashboardAddCategoryForm">
+                        <div v-if="categoryMessage"
+                             class="alert alert-danger"
+                             role="alert"
+                             aria-live="polite">
+
+                            {{ categoryMessage }}
+
+                        </div>
+
+
+                        <label for="dashboardCategoryName" class="form-label">
+                            نام دسته‌بندی
+                            <span class="text-danger">*</span>
+                        </label>
+
+                        <input type="text"
+                               class="form-control mb-3"
+                               id="dashboardCategoryName"
+                               name="name"
+                               v-model="categoryForm.name"
+                               maxlength="100"
+                               required>
+
+
+                        <label for="dashboardCategoryType" class="form-label">
+                            نوع دسته‌بندی
+                            <span class="text-danger">*</span>
+                        </label>
+
+                        <select id="dashboardCategoryType"
+                                name="type"
+                                class="form-select"
+                                v-model="categoryForm.type"
+                                required>
+
+                            <option value="">
+                                نوع را انتخاب کنید
+                            </option>
+
+                            <option value="income">
+                                درآمد
+                            </option>
+
+                            <option value="expense">
+                                هزینه
+                            </option>
+
+                        </select>
+
+
+                        <p class="small text-body-secondary mt-3 mb-0">
+                            با ثبت دسته‌بندی، فهرست انتخاب دسته‌بندی تراکنش نیز به‌روزرسانی می‌شود.
+                        </p>
+
+                    </div>
+
+
+                    <div class="modal-footer">
+
+                        <button type="button"
+                                class="btn btn-outline-secondary"
+                                data-bs-dismiss="modal">
+
+                            انصراف
+
+                        </button>
+
+
+                        <button type="submit"
+                                class="btn btn-primary"
+                                :disabled="savingCategory">
+
+                            {{ savingCategory ? 'در حال ثبت...' : 'ثبت دسته‌بندی' }}
+
+                        </button>
+
+                    </div>
+
+                </form>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- Delete Transaction Modal -->
+    <div class="modal fade tz-modal"
+         id="dashboardDeleteTransactionModal"
+         tabindex="-1"
+         aria-labelledby="dashboardDeleteTransactionTitle"
+         aria-hidden="true">
+
+        <div class="modal-dialog modal-dialog-centered">
+
+            <div class="modal-content">
 
                 <div class="modal-header">
 
                     <h2 class="modal-title fs-5"
-                        id="dashboardAddCategoryTitle">
+                        id="dashboardDeleteTransactionTitle">
 
-                        <i class="fa-solid fa-folder-plus text-primary me-2"
+                        <i class="fa-solid fa-trash-can text-danger me-2"
                            aria-hidden="true"></i>
 
-                        افزودن دسته‌بندی
+                        حذف تراکنش
 
                     </h2>
 
@@ -880,52 +1341,25 @@ $this->load->view('layouts/header', array(
 
                 <div class="modal-body">
 
+                    <p>
+                        آیا از حذف تراکنش
+                        «<span class="fw-semibold">{{ transactionToDelete ? transactionToDelete.title : '' }}</span>»
+                        اطمینان دارید؟
+                    </p>
+
                     <p class="small text-body-secondary">
-                        رنگ و آیکون دسته‌بندی به‌صورت پیش‌فرض توسط ترازینو تعیین می‌شود.
+                        تراکنش حذف‌شده از بخش حذف‌شده‌های صفحه تراکنش‌ها قابل بازیابی است.
                     </p>
 
 
-                    <label for="dashboardCategoryName" class="form-label">
-                        نام دسته‌بندی
-                        <span class="text-danger">*</span>
-                    </label>
+                    <div v-if="deleteMessage"
+                         class="alert alert-danger"
+                         role="alert"
+                         aria-live="polite">
 
-                    <input type="text"
-                           class="form-control mb-3"
-                           id="dashboardCategoryName"
-                           name="name"
-                           maxlength="100"
-                           required>
+                        {{ deleteMessage }}
 
-
-                    <label for="dashboardCategoryType" class="form-label">
-                        نوع دسته‌بندی
-                        <span class="text-danger">*</span>
-                    </label>
-
-                    <select id="dashboardCategoryType"
-                            name="type"
-                            class="form-select"
-                            required>
-
-                        <option value="">
-                            نوع را انتخاب کنید
-                        </option>
-
-                        <option value="income">
-                            درآمد
-                        </option>
-
-                        <option value="expense">
-                            هزینه
-                        </option>
-
-                    </select>
-
-
-                    <p class="small text-body-secondary mt-3 mb-0">
-                        با ثبت دسته‌بندی، فهرست انتخاب دسته‌بندی تراکنش نیز به‌روزرسانی می‌شود.
-                    </p>
+                    </div>
 
                 </div>
 
@@ -940,14 +1374,16 @@ $this->load->view('layouts/header', array(
 
                     </button>
 
-                    <a class="btn btn-primary"
-                       href="<?php echo html_escape(site_url('categories')); ?>">
 
-                        ادامه در صفحه دسته‌بندی‌ها
-                        <i class="fa-solid fa-arrow-left ms-1"
-                           aria-hidden="true"></i>
+                    <button type="button"
+                            id="confirmDashboardDeleteButton"
+                            class="btn btn-danger"
+                            @click="deleteTransaction"
+                            :disabled="deletingTransaction">
 
-                    </a>
+                        {{ deletingTransaction ? 'در حال حذف...' : 'حذف تراکنش' }}
+
+                    </button>
 
                 </div>
 
@@ -957,97 +1393,50 @@ $this->load->view('layouts/header', array(
 
     </div>
 
-</div>
-
-
-<!-- Delete Transaction Modal -->
-<div class="modal fade tz-modal"
-     id="dashboardDeleteTransactionModal"
-     tabindex="-1"
-     aria-labelledby="dashboardDeleteTransactionTitle"
-     aria-hidden="true">
-
-    <div class="modal-dialog modal-dialog-centered">
-
-        <div class="modal-content">
-
-            <div class="modal-header">
-
-                <h2 class="modal-title fs-5"
-                    id="dashboardDeleteTransactionTitle">
-
-                    <i class="fa-solid fa-trash-can text-danger me-2"
-                       aria-hidden="true"></i>
-
-                    حذف تراکنش
-
-                </h2>
-
-                <button type="button"
-                        class="btn-close"
-                        data-bs-dismiss="modal"
-                        aria-label="بستن">
-                </button>
-
-            </div>
-
-
-            <div class="modal-body">
-
-                <p>
-                    آیا از حذف تراکنش
-                    «<span id="dashboardDeleteTransactionName"></span>»
-                    اطمینان دارید؟
-                </p>
-
-                <p class="small text-body-secondary">
-                    تراکنش حذف‌شده از بخش حذف‌شده‌های صفحه تراکنش‌ها قابل بازیابی است.
-                </p>
-
-                <div id="dashboardDeleteTransactionMessage"
-                     class="alert d-none"
-                     role="alert"
-                     aria-live="polite">
-                </div>
-
-            </div>
-
-
-            <div class="modal-footer">
-
-                <button type="button"
-                        class="btn btn-outline-secondary"
-                        data-bs-dismiss="modal">
-
-                    انصراف
-
-                </button>
-
-                <button type="button"
-                        id="confirmDashboardDeleteButton"
-                        class="btn btn-danger">
-
-                    حذف تراکنش
-
-                </button>
-
-            </div>
-
-        </div>
-
-    </div>
 
 </div>
+
 
 <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
 <script>
     Vue.createApp({
         data() {
             return {
-
                 balanceAmount: null,
                 debtAmount: null,
                 balanceInput: '',
+
+                transactions: [],
+                categories: [],
+                loadingTransactions: false,
+                transactionsError: '',
+                categoriesError: '',
+
+                transactionForm: {
+                    title: '',
+                    type: '',
+                    category_id: '',
+                    amount: '',
+                    transaction_date: '',
+                    description: ''
+                },
+
+                editingId: null,
+                transactionMessage: '',
+                categoriesWarning: '',
+                savingTransaction: false,
+
+                transactionToDelete: null,
+                deleteMessage: '',
+                deletingTransaction: false,
+
+                categoryForm: {
+                    name: '',
+                    type: ''
+                },
+
+                categoryMessage: '',
+                savingCategory: false,
 
                 pageMessage: '',
                 pageMessageType: 'success',
@@ -1057,9 +1446,6 @@ $this->load->view('layouts/header', array(
 
                 savingBalance: false,
                 resettingBalance: false,
-
-                showBalanceModal: false,
-                showResetBalanceModal: false
 
                 };
 
@@ -1106,6 +1492,29 @@ $this->load->view('layouts/header', array(
                     return window.PersianFormat.number(amount);
                 },
 
+                formatDate(date) {
+                    return window.PersianFormat.date(date);
+                },
+
+                formatBalanceAmount(event) {
+                    this.balanceInput = window.PersianFormat.groupDigits(event.target.value);
+                },
+
+                openBalanceModal() {
+                    this.balanceModalMessage = '';
+                    this.balanceInput = '';
+
+                    window.bootstrap.Modal.getOrCreateInstance(
+                        document.getElementById('dashboardBalanceModal')
+                    ).show();
+                },
+
+                openResetBalanceModal() {
+                    this.resetBalanceMessage = '';
+
+                    window.bootstrap.Modal.getOrCreateInstance(document.getElementById('dashboardResetBalanceModal')).show();
+                },
+
                 async updateBalance(){
                     if(this.savingBalance){
                         return;
@@ -1129,17 +1538,17 @@ $this->load->view('layouts/header', array(
                             return;
                         }
 
-                        this.showBalanceModal = false;
+                        window.bootstrap.Modal.getOrCreateInstance(
+                            document.getElementById('dashboardBalanceModal')
+                        ).hide();
+
                         this.balanceInput = '';
 
                         this.pageMessage = result.message || "موجودی با موفقیت تغییر کرد. ";
                         this.pageMessageType = 'success';
 
                         await this.loadBalance();
-
-                        if (window.TarazinoReports) {
-                            await window.TarazinoReports.render();
-                        }
+                        await window.TarazinoReports.render();
 
                     } catch (error) {
                         this.balanceModalMessage = 'تغییر موجودی انجام نشد، دوباره تلاش کنید.';
@@ -1168,26 +1577,349 @@ $this->load->view('layouts/header', array(
                             return;
                         }
 
-                        this.showResetBalanceModal = false;
+                        window.bootstrap.Modal.getOrCreateInstance(
+                            document.getElementById('dashboardResetBalanceModal')
+                        ).hide();
 
                         this.pageMessage = result.message || 'موجودی با موفقیت صفر شد.';
                         this.pageMessageType = 'success';
 
                         await this.loadBalance();
+                        await window.TarazinoReports.render();
 
-                        if (window.TarazinoReports) {
-                            await window.TarazinoReports.render();
-                        }
                     }catch(error){
                         this.resetBalanceMessage = 'صفر کردن موجودی انجام نشد، دوباره تلاش کنید.';
                     } finally{
                         this.resettingBalance = false;
                     }
 
+                },
+
+                async loadCategories() {
+                    this.categoriesError = '';
+
+                    try {
+                        const response = await fetch("<?= site_url('api/categories') ?>");
+                        const result = await response.json();
+
+                        if (result.success) {
+                            this.categories = result.categories;
+                        } else {
+                            this.categories = [];
+                            this.categoriesError = result.message || 'دریافت دسته‌بندی‌ها انجام نشد.';
+                        }
+
+                    } catch (error) {
+                        this.categories = [];
+                        this.categoriesError = 'دریافت دسته‌بندی‌ها انجام نشد.';
+                    }
+
+                    if (this.categoriesError) {
+                        this.pageMessage = this.categoriesError;
+                        this.pageMessageType = 'danger';
+                    }
+
+                    this.updateCategoriesWarning();
+
+                    if (this.categoriesError) {
+                        return false;
+                    }
+
+                    return true;
+                },
+
+                async loadTransactions() {
+                    if (this.loadingTransactions) {
+                        return;
+                    }
+
+                    this.loadingTransactions = true;
+                    this.transactionsError = '';
+
+                    try {
+                        const response = await fetch("<?= site_url('api/transactions') ?>");
+                        const result = await response.json();
+
+                        if (!result.success) {
+                            this.transactions = [];
+                            this.transactionsError = result.message || 'دریافت تراکنش‌ها انجام نشد.';
+                            return false;
+                        }
+
+                        this.transactions = result.transactions.slice(0, 5);
+
+                        return true;
+
+                    } catch (error) {
+                        this.transactions = [];
+                        this.transactionsError = 'دریافت تراکنش‌ها انجام نشد، دوباره تلاش کنید.';
+                        return false;
+
+                    } finally {
+                        this.loadingTransactions = false;
+                    }
+                },
+
+                categoryOf(transaction) {
+                    return this.categories.find(category => {
+                        return String(category.id) === String(transaction.category_id);});
+                },
+
+                categoryType(transaction) {
+                    const category = this.categoryOf(transaction);
+                    return category ? category.type : '';
+                },
+
+                categoryName(transaction) {
+                    const category = this.categoryOf(transaction);
+                    return category ? category.name : '—';
+                },
+
+                transactionCategories() {
+                    return this.categories.filter(category => {
+                        return category.type === this.transactionForm.type;});
+                },
+
+                updateCategoriesWarning() {
+                    if (this.categoriesError) {
+                        this.categoriesWarning = this.categoriesError;
+                    } else if (this.categories.length === 0) {
+                        this.categoriesWarning = 'ابتدا یک دسته‌بندی فعال ایجاد کنید.';
+                    } else if (
+                        this.transactionForm.type && this.transactionCategories().length === 0
+                    ) {
+                        this.categoriesWarning = 'برای این نوع تراکنش دسته‌بندی فعالی وجود ندارد.';
+                    } else {
+                        this.categoriesWarning = '';
+                    }
+                },
+
+                resetTransactionForm() {
+                    const today = new Date();
+                    const month = String(today.getMonth() + 1).padStart(2, '0');
+                    const day = String(today.getDate()).padStart(2, '0');
+
+                    this.transactionForm = {
+                        title: '',
+                        type: '',
+                        category_id: '',
+                        amount: '',
+                        transaction_date: today.getFullYear() + '-' + month + '-' + day,
+                        description: ''
+                    };
+
+                    this.editingId = null;
+                    this.transactionMessage = '';
+
+                    this.updateCategoriesWarning();
+                },
+
+                openTransactionModal() {
+                    this.resetTransactionForm();
+
+                    window.bootstrap.Modal.getOrCreateInstance(document.getElementById('dashboardTransactionModal')).show();
+                },
+
+                editTransaction(transaction) {
+
+                    this.resetTransactionForm();
+                    this.editingId = String(transaction.id);
+                    const category = this.categoryOf(transaction);
+
+                    this.transactionForm = {
+                        title: transaction.title || '',
+                        type: category ? category.type : '',
+                        category_id: String(transaction.category_id || ''),
+                        amount: window.PersianFormat.groupDigits(transaction.amount),
+                        transaction_date: transaction.transaction_date || '',
+                        description: transaction.description || ''
+                    };
+
+                this.updateCategoriesWarning();
+
+                    window.bootstrap.Modal.getOrCreateInstance(document.getElementById('dashboardTransactionModal')).show();
+                },
+
+                changeTransactionType() {
+                    this.transactionForm.category_id = '';
+                    this.updateCategoriesWarning();
+                },
+
+                formatTransactionAmount(event) {
+                    this.transactionForm.amount = window.PersianFormat.groupDigits(event.target.value);
+                },
+
+                async saveTransaction() {
+                    if (this.savingTransaction) {
+                        return;
+                    }
+
+                    this.savingTransaction = true;
+                    this.transactionMessage = '';
+
+                    const data = {
+                        title: this.transactionForm.title.trim(),
+                        category_id: this.transactionForm.category_id,
+                        amount: window.PersianFormat.normalizeInputNumber(this.transactionForm.amount).trim(),
+                        transaction_date: this.transactionForm.transaction_date,
+                        description: this.transactionForm.description
+                    };
+
+                    let url = "<?= site_url('api/transactions') ?>";
+
+                    if (this.editingId) {
+                        url = "<?= site_url('api/transactions') ?>/" + this.editingId + "/update";
+                    }
+
+                    try {
+                        const response = await fetch(url, {
+                            method: 'POST',
+                            body: JSON.stringify(data)
+                        });
+
+                        const result = await response.json();
+
+                        if (result.success) {
+                            window.bootstrap.Modal.getOrCreateInstance(
+                                document.getElementById('dashboardTransactionModal')).hide();
+
+                            this.resetTransactionForm();
+
+                            this.pageMessage = result.message || 'تراکنش با موفقیت ذخیره شد.';
+                            this.pageMessageType = 'success';
+
+                            const loaded = await this.loadTransactions();
+
+                            await this.loadBalance();
+                            await window.TarazinoReports.render();
+
+                            if (!loaded) {
+                                this.pageMessage = 'تراکنش ذخیره شد، اما فهرست به‌روزرسانی نشد.';
+                                this.pageMessageType = 'warning';
+                            }
+
+                        } else {
+                            this.transactionMessage = result.message || 'ذخیره تراکنش انجام نشد.';
+                        }
+
+                    } catch (error) {
+                        this.transactionMessage = 'ارتباط با سرور برقرار نشد، دوباره تلاش کنید.';
+
+                    } finally {
+                        this.savingTransaction = false;
+                    }
+                },
+
+                askDelete(transaction) {
+                    this.transactionToDelete = transaction;
+                    this.deleteMessage = '';
+
+                    window.bootstrap.Modal.getOrCreateInstance(document.getElementById('dashboardDeleteTransactionModal')).show();
+                },
+
+                async deleteTransaction() {
+                    if (this.deletingTransaction || !this.transactionToDelete) {
+                        return;
+                    }
+
+                    this.deletingTransaction = true;
+                    this.deleteMessage = '';
+
+                    const url = "<?= site_url('api/transactions') ?>/" + this.transactionToDelete.id + "/delete";
+
+                    try {
+                        const response = await fetch(url, {
+                            method: 'POST'
+                        });
+
+                        const result = await response.json();
+
+                        if (result.success) {
+
+                            window.bootstrap.Modal.getOrCreateInstance(document.getElementById('dashboardDeleteTransactionModal')).hide();
+
+                            this.pageMessage = result.message || 'تراکنش با موفقیت حذف شد.';
+                            this.pageMessageType = 'success';
+
+                            this.transactionToDelete = null;
+
+                            const loaded = await this.loadTransactions();
+
+                            await this.loadBalance();
+                            await window.TarazinoReports.render();
+
+                            if (!loaded) {
+                                this.pageMessage = 'تراکنش حذف شد، اما فهرست به‌روزرسانی نشد.';
+                                this.pageMessageType = 'warning';
+                            }
+
+                        } else {
+                            this.deleteMessage = result.message || 'حذف تراکنش انجام نشد.';
+                        }
+
+                    } catch (error) {
+                        this.deleteMessage = 'ارتباط با سرور برقرار نشد، دوباره تلاش کنید.';
+                    } finally {
+                        this.deletingTransaction = false;
+                    }
+                },
+
+                resetCategoryForm() {
+                    this.categoryForm = {
+                        name: '',
+                        type: ''
+                    };
+                    this.categoryMessage = '';
+                },
+
+                async saveCategory() {
+                    if (this.savingCategory) {
+                        return;
+                    }
+
+                    this.savingCategory = true;
+                    this.categoryMessage = '';
+
+                    const data = {
+                        name: this.categoryForm.name.trim(),
+                        type: this.categoryForm.type
+                    };
+
+                    try {
+                        const response = await fetch("<?= site_url('api/categories/store') ?>", {
+                            method: 'POST',
+                            body: JSON.stringify(data)
+                        });
+
+                        const result = await response.json();
+
+                        if (result.success) {
+
+                            window.bootstrap.Modal.getOrCreateInstance(document.getElementById('dashboardAddCategoryModal')).hide();
+
+                            this.resetCategoryForm();
+
+                            this.pageMessage = result.message || 'دسته‌بندی با موفقیت ایجاد شد.';
+                            this.pageMessageType = 'success';
+
+                            await this.loadCategories();
+                            await this.loadTransactions();
+
+                        } else {
+                            this.categoryMessage = result.message || 'ایجاد دسته‌بندی انجام نشد.';
+                        }
+                    } catch (error) {
+                        this.categoryMessage = 'ارتباط با سرور برقرار نشد، دوباره تلاش کنید.';
+                    } finally {
+                        this.savingCategory = false;
+                    }
                 }
             },
 
-            mounted() {
+            async mounted() {
+                await this.loadCategories();
+
+                this.loadTransactions();
                 this.loadBalance();
             }
 
@@ -1202,9 +1934,7 @@ $this->load->view('layouts/footer', array(
     'use_charts' => TRUE,
     'page_scripts' => array(
         base_url('assets/js/api.js'),
-        base_url('assets/js/dashboard-reports.js'),
-        base_url('assets/js/dashboard-transactions.js'),
-        base_url('assets/js/dashboard.js')
+        base_url('assets/js/dashboard-reports.js')
     )
 ));
 
