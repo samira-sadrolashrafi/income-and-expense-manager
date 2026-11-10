@@ -19,7 +19,6 @@
                     class="btn-close"
                     data-bs-dismiss="modal"
                     aria-label="بستن پنجره"
-                    @click="logoutMessage = ''"
                 ></button>
             </div>
 
@@ -63,7 +62,6 @@
                     class="btn btn-outline-secondary"
                     data-bs-dismiss="modal"
                     :disabled="loggingOut"
-                    @click="logoutMessage = ''"
                 >
                     انصراف
                 </button>
@@ -83,45 +81,75 @@
     </div>
 </div>
 
-<script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
-
-
 <script>
-    Vue.createApp({
-        data(){
-            return{
+    const logoutModal = document.getElementById('logoutConfirmModal');
+
+    const logoutApp = Vue.createApp({
+        data() {
+            return {
                 loggingOut: false,
                 logoutMessage: ''
-            }
+            };
         },
-        methods:{
-            async logout(){
-                if(this.loggingOut){
+        methods: {
+            async logout() {
+                if (this.loggingOut) {
                     return;
                 }
+
                 this.loggingOut = true;
                 this.logoutMessage = '';
 
-                try{
-                    const response = await fetch("<?= site_url('auth/logout') ?>",{
-                        method:'POST'
+                try {
+                    const response = await fetch("<?= site_url('auth/logout') ?>", {
+                        method: 'POST',
+                        headers: {
+                            'Accept': 'application/json'
+                        }
                     });
 
                     const result = await response.json();
 
-                    if(result.success){
+                    if (response.ok && result && result.success === true) {
                         window.location.href = "<?= site_url('login') ?>";
-                    } else{
-                        this.logoutMessage = result.message || "خروج از حساب انجام نشد، دوباره تلاش کنید. ";
-                        this.loggingOut = false;
+                        return;
                     }
-                }catch(error){
-                    this.logoutMessage = "ارتباط با سرور برقرار نشد، دوباره تلاش کنید. ";
+
+                    this.logoutMessage = result && result.message
+                        ? result.message
+                        : 'خروج از حساب انجام نشد، دوباره تلاش کنید.';
+
+                } catch (error) {
+                    this.logoutMessage = 'ارتباط با سرور برقرار نشد، دوباره تلاش کنید.';
+                } finally {
                     this.loggingOut = false;
                 }
             }
         }
-    }).mount('#logoutConfirmModal');
+    }).mount(logoutModal);
+
+    logoutModal.addEventListener('show.bs.modal', function () {
+        logoutApp.logoutMessage = '';
+    });
+
+    const mobileNav = document.getElementById('dashboardMobileNav');
+
+    if (mobileNav) {
+        const mobileLogoutButton = mobileNav.querySelector('[data-sidebar-logout]');
+
+        if (mobileLogoutButton) {
+            mobileLogoutButton.addEventListener('click', function () {
+                mobileNav.dataset.openLogout = 'true';
+            });
+
+            mobileNav.addEventListener('hidden.bs.offcanvas', function () {
+                if (mobileNav.dataset.openLogout !== 'true') {
+                    return;
+                }
+
+                mobileNav.dataset.openLogout = 'false';
+                bootstrap.Modal.getOrCreateInstance(logoutModal).show();
+            });
+        }
+    }
 </script>
-
-

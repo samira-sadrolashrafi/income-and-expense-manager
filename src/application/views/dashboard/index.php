@@ -1,4 +1,3 @@
-
 <?php
 defined('BASEPATH') OR exit('No direct script access allowed');
 
@@ -1215,11 +1214,6 @@ $this->load->view('layouts/header', array(
 
                     <div class="modal-body">
 
-                        <p class="small text-body-secondary">
-                            رنگ و آیکون دسته‌بندی به‌صورت پیش‌فرض توسط ترازینو تعیین می‌شود.
-                        </p>
-
-
                         <div v-if="categoryMessage"
                              class="alert alert-danger"
                              role="alert"
@@ -1392,7 +1386,6 @@ $this->load->view('layouts/header', array(
         </div>
 
     </div>
-
 
 </div>
 

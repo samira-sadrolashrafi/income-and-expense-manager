@@ -13,6 +13,7 @@
                 'data-bs-theme',
                 localStorage.getItem('tarazino-theme') === 'dark' ? 'dark' : 'light'
             );
+
             document.documentElement.setAttribute(
                 'data-sidebar-expanded',
                 localStorage.getItem('tarazino-sidebar-expanded') === 'true' ? 'true' : 'false'
@@ -40,5 +41,7 @@
     <?php foreach ($page_styles as $style): ?>
         <link rel="stylesheet" href="<?= html_escape($style) ?>">
     <?php endforeach; ?>
+
+    <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
 </head>
 <body class="bg-body">
