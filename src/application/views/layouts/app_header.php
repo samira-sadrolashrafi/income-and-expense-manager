@@ -16,6 +16,14 @@
         </div>
     </div>
 
+    <div class="d-flex align-items-center gap-2 flex-shrink-0">
+        <label class="tz-header-theme" title="تغییر پوسته" aria-label="تغییر پوسته">
+            <i class="fa-solid fa-sun" aria-hidden="true"></i>
+            <input type="checkbox" data-theme-toggle aria-label="حالت تیره">
+            <span class="tz-theme-switch" aria-hidden="true"><span></span></span>
+            <i class="fa-solid fa-moon" aria-hidden="true"></i>
+        </label>
+
     <div class="dropdown flex-shrink-0">
         <button type="button" class="btn btn-light border d-flex align-items-center gap-2 px-2 px-sm-3 py-2 text-body"
                 id="tarazinoAccountMenu" data-bs-toggle="dropdown" aria-expanded="false"
@@ -81,5 +89,6 @@
                 </button>
             </li>
         </ul>
+    </div>
     </div>
 </header>
