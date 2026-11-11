@@ -1338,52 +1338,37 @@ $this->load->view('layouts/header', array(
             },
 
             getPageNumbers(currentPage, totalPages) {
-
                 const pages = [];
 
                 if (totalPages <= 4) {
-
                     for (let page = 1; page <= totalPages; page++) {
-
                         pages.push(page);
-
                     }
-
                     return pages;
-
                 }
 
                 const start = Math.max(1, currentPage - 1);
                 const end = Math.min(totalPages, currentPage + 1);
 
                 if (start > 1) {
-
                     pages.push(1);
-
                     if (start > 2) {
                         pages.push('...');
                     }
-
                 }
 
                 for (let page = start; page <= end; page++) {
-
                     pages.push(page);
-
                 }
 
                 if (end < totalPages) {
-
                     if (end < totalPages - 1) {
                         pages.push('...');
                     }
-
                     pages.push(totalPages);
-
                 }
 
                 return pages;
-
             },
 
             paginationStart(pagination){
@@ -1456,7 +1441,6 @@ $this->load->view('layouts/header', array(
                 this.categoryName = '';
                 this.categoryType = '';
 
-
                 this.formMessage = '';
 
                 this.isEditing = false;
@@ -1489,7 +1473,6 @@ $this->load->view('layouts/header', array(
                 this.categoryType = category.type;
 
                 window.bootstrap.Modal.getOrCreateInstance(document.getElementById("categoryModal")).show();
-
             },
 
             //ایجاد و ویرایش دسته بندی
@@ -1506,9 +1489,7 @@ $this->load->view('layouts/header', array(
                 let url = "<?= site_url('api/categories/store') ?>";
 
                 if (this.isEditing) {
-                    url = "<?= site_url('api/categories') ?>/"
-
-                        + this.editingCategoryId + "/update";
+                    url = "<?= site_url('api/categories') ?>/" + this.editingCategoryId + "/update";
                 }
 
                 const page = this.isEditing ? this.activePage : 1;

@@ -1497,9 +1497,7 @@ $this->load->view('layouts/header', array(
                     this.balanceModalMessage = '';
                     this.balanceInput = '';
 
-                    window.bootstrap.Modal.getOrCreateInstance(
-                        document.getElementById('dashboardBalanceModal')
-                    ).show();
+                    window.bootstrap.Modal.getOrCreateInstance(document.getElementById('dashboardBalanceModal')).show();
                 },
 
                 openResetBalanceModal() {
@@ -1531,9 +1529,7 @@ $this->load->view('layouts/header', array(
                             return;
                         }
 
-                        window.bootstrap.Modal.getOrCreateInstance(
-                            document.getElementById('dashboardBalanceModal')
-                        ).hide();
+                        window.bootstrap.Modal.getOrCreateInstance(document.getElementById('dashboardBalanceModal')).hide();
 
                         this.balanceInput = '';
 
@@ -1773,8 +1769,7 @@ $this->load->view('layouts/header', array(
                         const result = await response.json();
 
                         if (result.success) {
-                            window.bootstrap.Modal.getOrCreateInstance(
-                                document.getElementById('dashboardTransactionModal')).hide();
+                            window.bootstrap.Modal.getOrCreateInstance(document.getElementById('dashboardTransactionModal')).hide();
 
                             this.resetTransactionForm();
 

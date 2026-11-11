@@ -331,7 +331,8 @@
 
                 this.releaseAvatarPreview();
                 this.avatarFile = file;
-                this.avatarPreviewUrl = window.URL.createObjectURL(file);
+                this.avatarPreviewUrl = window.URL.createObjectURL(file); // این دستور یک آدرس موقت برای فایل انتخاب شده ایجاد می کند، 
+                //این آدرس به مرورگر اجازه می دهد عکس را بدون آپلود کردن روی سرور نمایش دهد. 
                 this.avatarRemoved = false;
                 this.avatarUrl = this.avatarPreviewUrl;
                 this.avatarNotice = 'پیش‌نمایش عکس آماده است؛ برای ثبت روی «ذخیره تغییرات» بزنید.';

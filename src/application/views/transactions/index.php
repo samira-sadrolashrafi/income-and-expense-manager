@@ -1289,13 +1289,13 @@
                 activeError: '',
                 deletedError: '',
 
-                activePage: 1,
+                activePage: 1,//از activePage استفاده می‌کنیم تا بدانیم الان در چه صفحه‌ای هستیم.
                 deletedPage: 1,
 
                 limit: 10,
 
                 activePagination: {
-                    current_page: 1,
+                    current_page: 1,//اینجا از current_page داخل شیء Pagination استفاده می‌کنیم تا شماره اولین تراکنش را محاسبه کنیم.
                     total_pages: 0,
                     total: 0
                 },
@@ -1344,7 +1344,6 @@
                     const result = await response.json();
 
                     if (!result.success) {
-
                         this.categories = [];
                         this.categoriesError = result.message || 'دریافت دسته‌بندی‌ها انجام نشد.';
                         this.updateCategoriesWarning();
@@ -1374,13 +1373,11 @@
                 params.append('page', page);
 
                 try {
-
                     const response = await fetch(
                         "<?= site_url('api/transactions') ?>?" + params.toString()
                     );
 
                     const result = await response.json();
-
 
                     if (!result.success) {
 
