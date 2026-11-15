@@ -71,7 +71,7 @@ class Category_api extends BaseApiController
             return;
         }
 
-        $data = $this->input->post();
+        $data = json_decode(file_get_contents('php://input'), true);
 
         $category_id = $this->category_service->create($this->user_id,$data);
 
@@ -93,7 +93,7 @@ class Category_api extends BaseApiController
             return;
         }
 
-        $data = $this->input->post();
+        $data = json_decode(file_get_contents('php://input'), true);
 
         if (!$this->category_service->update($this->user_id, $category_id, $data)) {
             return $this->respond_service_error($this->category_service, 'ویرایش دسته‌بندی انجام نشد؛ لطفاً دوباره تلاش کنید.');

@@ -55,7 +55,11 @@ class Transaction_api extends BaseApiController
 
     public function store()
     {
-        $data = $this->input->post();
+        $data = json_decode(file_get_contents('php://input'), true);
+
+        if (!is_array($data)) {
+            $data = $this->input->post();
+        }
 
         $transaction_id = $this->transaction_service->create($this->current_user_id(),$data);
 
@@ -63,7 +67,7 @@ class Transaction_api extends BaseApiController
             return $this->respond_service_error($this->transaction_service,'ایجاد تراکنش انجام نشد؛ لطفاً دوباره تلاش کنید.');
         }
 
-        return $this->respond_json(true,'تراکنش با موفقیت ایجاد شد.',200,
+        return $this->respond_json(true, 'تراکنش با موفقیت ایجاد شد.', 200,
             array(
                 'transaction_id' => $transaction_id
             )
@@ -72,7 +76,12 @@ class Transaction_api extends BaseApiController
 
     public function update($transaction_id)
     {
-        $data = $this->input->post();
+        $data = json_decode(file_get_contents('php://input'), true);
+
+        if (!is_array($data)) {
+            $data = $this->input->post();
+        }
+
 
         if (!$this->transaction_service->update($this->current_user_id(),$transaction_id,$data)) {
             return $this->respond_service_error($this->transaction_service,'ویرایش تراکنش انجام نشد؛ لطفاً دوباره تلاش کنید.');

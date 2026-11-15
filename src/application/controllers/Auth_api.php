@@ -18,7 +18,9 @@ class Auth_api extends BaseApiController
 
     public function register()
     {
-        $result = $this->auth_service->register($this->input->post());
+        $payload = json_decode(file_get_contents('php://input'), true);
+
+        $result = $this->auth_service->register($payload);
 
         return $this->send_result($result);
     }
@@ -26,7 +28,7 @@ class Auth_api extends BaseApiController
 
     public function login()
     {
-        $payload = json_decode(file_get_contents('php://input'));
+        $payload = json_decode(file_get_contents('php://input'), true);
         
         $result = $this->auth_service->login($payload);
 
@@ -36,7 +38,9 @@ class Auth_api extends BaseApiController
 
     public function restore_account()
     {
-        $result = $this->auth_service->restore_deleted_account($this->input->post());
+        $payload = json_decode(file_get_contents('php://input'), true);
+
+        $result = $this->auth_service->restore_deleted_account($payload);
 
         return $this->send_result($result);
     }

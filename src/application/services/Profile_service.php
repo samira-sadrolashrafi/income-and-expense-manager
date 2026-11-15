@@ -98,10 +98,7 @@ class Profile_service
         }
 
         if ($change_password) {
-            $data['password'] = password_hash(
-                $security['new_password'],
-                PASSWORD_DEFAULT
-            );
+            $data['password'] = password_hash($security['new_password'],PASSWORD_DEFAULT);
 
             if ($data['password'] === false) {
                 $this->remove_avatar($new_avatar);

@@ -16,25 +16,48 @@
         </div>
     </div>
 
+    <div class="d-flex align-items-center gap-2 flex-shrink-0">
+        <label class="tz-header-theme" title="تغییر پوسته" aria-label="تغییر پوسته">
+            <i class="fa-solid fa-sun" aria-hidden="true"></i>
+            <input type="checkbox" data-theme-toggle aria-label="حالت تیره">
+            <span class="tz-theme-switch" aria-hidden="true"><span></span></span>
+            <i class="fa-solid fa-moon" aria-hidden="true"></i>
+        </label>
+
     <div class="dropdown flex-shrink-0">
         <button type="button" class="btn btn-light border d-flex align-items-center gap-2 px-2 px-sm-3 py-2 text-body"
                 id="tarazinoAccountMenu" data-bs-toggle="dropdown" aria-expanded="false"
                 aria-label="باز کردن منوی حساب کاربری">
 
-            <?php if ($this->session->userdata('avatar')): ?>
-                <img src="<?= html_escape(base_url('uploads/avatars/' . basename($this->session->userdata('avatar')))) ?>"
+            <?php if (!empty($app_use_vue)): ?>
+                <img v-if="avatarUrl" :src="avatarUrl"
                      width="40" height="40" class="rounded-circle object-fit-cover flex-shrink-0"
-                     alt="عکس پروفایل <?= html_escape($app_username) ?>" loading="eager" decoding="async">
-            <?php else: ?>
-                <span class="d-inline-flex align-items-center justify-content-center bg-primary-subtle text-primary rounded-circle flex-shrink-0"
+                     :alt="'عکس پروفایل ' + username" loading="eager" decoding="async">
+                <span v-else
+                      class="d-inline-flex align-items-center justify-content-center bg-primary-subtle text-primary rounded-circle flex-shrink-0"
                       style="width: 40px; height: 40px;" aria-hidden="true">
                     <i class="fa-solid fa-user" aria-hidden="true"></i>
                 </span>
+            <?php else: ?>
+                <?php if ($this->session->userdata('avatar')): ?>
+                    <img src="<?= html_escape(base_url('uploads/avatars/' . basename($this->session->userdata('avatar')))) ?>"
+                         width="40" height="40" class="rounded-circle object-fit-cover flex-shrink-0"
+                         alt="عکس پروفایل <?= html_escape($app_username) ?>" loading="eager" decoding="async">
+                <?php else: ?>
+                    <span class="d-inline-flex align-items-center justify-content-center bg-primary-subtle text-primary rounded-circle flex-shrink-0"
+                          style="width: 40px; height: 40px;" aria-hidden="true">
+                        <i class="fa-solid fa-user" aria-hidden="true"></i>
+                    </span>
+                <?php endif; ?>
             <?php endif; ?>
 
             <span class="d-none d-sm-flex flex-column align-items-start text-start lh-sm">
                 <span class="fw-semibold small text-truncate" style="max-width: 11rem;">
-                    <?= html_escape($app_username) ?>
+                    <?php if (!empty($app_use_vue)): ?>
+                        {{ username }}
+                    <?php else: ?>
+                        <?= html_escape($app_username) ?>
+                    <?php endif; ?>
                 </span>
                 <span class="text-body-secondary small mt-1">حساب کاربری</span>
             </span>
@@ -42,7 +65,15 @@
         </button>
 
         <ul class="dropdown-menu dropdown-menu-end shadow-sm border mt-2" aria-labelledby="tarazinoAccountMenu">
-            <li><h2 class="dropdown-header small mb-0"><?= html_escape($app_username) ?></h2></li>
+            <li>
+                <h2 class="dropdown-header small mb-0">
+                    <?php if (!empty($app_use_vue)): ?>
+                        {{ username }}
+                    <?php else: ?>
+                        <?= html_escape($app_username) ?>
+                    <?php endif; ?>
+                </h2>
+            </li>
             <li>
                 <a class="dropdown-item d-flex align-items-center gap-2" href="<?= html_escape(site_url('profile')) ?>">
                     <i class="fa-solid fa-user-gear text-body-secondary" aria-hidden="true"></i>
@@ -58,5 +89,6 @@
                 </button>
             </li>
         </ul>
+    </div>
     </div>
 </header>
